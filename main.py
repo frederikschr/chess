@@ -32,11 +32,7 @@ class Game():
 
         while True:
 
-            turn = self.n.send("get-turn")
-
-            print(turn)
-
-
+            turn = int(self.n.send("get-turn"))
 
 
             for field in self.board.fields:
@@ -49,38 +45,39 @@ class Game():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
 
-                    for field in self.board.fields:
-                        if field.is_clicked(pos[0], pos[1]):
-                            if self.player.has_selected:
-                                if field != self.player.selected_field:
-                                    print(field.coordinates, self.player.selected_field.figure.moveable_fields)
+                    if self.player.id == turn:  #Check if it's the client's player's turn
+                        for field in self.board.fields:
+                            if field.is_clicked(pos[0], pos[1]):  #Check if field is clicked
+                                if self.player.has_selected:
+                                    if field != self.player.selected_field:
+                                        print(field.coordinates, self.player.selected_field.figure.moveable_fields)
 
-                                    if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                                        if field.coordinates in self.player.selected_field.figure.moveable_fields:
 
-                                        field.figure = self.player.selected_field.figure
+                                            field.figure = self.player.selected_field.figure
 
-                                        field.update_figure()
+                                            field.update_figure()
 
-                                        self.n.send("change-turn")
+                                            self.n.send("change-turn")
 
 
-                                        self.player.selected_field.figure = None
-                                        self.player.selected_field.is_highlighted = False
+                                            self.player.selected_field.figure = None
+                                            self.player.selected_field.is_highlighted = False
+                                            self.player.has_selected = False
+
+
+                                    else:
+                                        field.is_highlighted = False
                                         self.player.has_selected = False
 
 
+
+
                                 else:
-                                    field.is_highlighted = False
-                                    self.player.has_selected = False
-
-
-
-
-                            else:
-                                if field.has_figure():
-                                    self.player.selected_field = field
-                                    self.player.has_selected = True
-                                    field.is_highlighted = True
+                                    if field.has_figure():
+                                        self.player.selected_field = field
+                                        self.player.has_selected = True
+                                        field.is_highlighted = True
 
 
 
@@ -93,7 +90,6 @@ class Game():
             pygame.display.update()
 
 class Field():
-
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
         self.coordinates = [game_coord_y, game_coord_x]
         self.win_pos_y = win_pos_y
@@ -106,7 +102,7 @@ class Field():
 
     def is_clicked(self, mouse_x, mouse_y):
         if mouse_x > self.win_pos_x and mouse_x < self.win_pos_x + self.size:
-            if(mouse_y > self.win_pos_y and mouse_y < self.win_pos_y + self.size):
+            if mouse_y > self.win_pos_y and mouse_y < self.win_pos_y + self.size:
                 return True
         return False
 
@@ -201,6 +197,9 @@ class Figure():
 
     def draw(self):
         pygame.draw.rect(screen, (255, 0, 0), (self.win_pos_x, self.win_pos_y, 50, 50))
+        textsurface = font.render(self.__class__.__name__, None, (255, 255, 255))
+        screen.blit(textsurface, (self.win_pos_x, self.win_pos_y))
+
 
     def can_go_to(self, coords):
         pass
@@ -228,6 +227,10 @@ pygame.init()
 width, height = 800, 800
 
 screen = pygame.display.set_mode([width, height])
+
+pygame.font.init()
+
+font = pygame.font.SysFont("Comic Sans MS", 20)
 
 pygame.display.set_caption("Chess")
 
