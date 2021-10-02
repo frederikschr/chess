@@ -35,22 +35,31 @@ class Game():
             turn = int(self.n.send("get-turn"))
 
 
-            for field in self.board.fields:
-                if field.has_figure():
-
-                    field.figure.set_moveable_fields()
-
 
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
 
-                    if self.player.id == turn:  #Check if it's the client's player's turn
-                        for field in self.board.fields:
-                            if field.is_clicked(pos[0], pos[1]):  #Check if field is clicked
-                                if self.player.has_selected:
-                                    if field != self.player.selected_field:
-                                        print(field.coordinates, self.player.selected_field.figure.moveable_fields)
+
+
+
+
+                    for field in self.board.fields:
+                        if field.is_clicked(pos[0], pos[1]):  #Check if field is clicked
+
+
+
+
+                            if self.player.has_selected:
+
+
+
+
+                                if field != self.player.selected_field:
+
+                                    if self.player.id == turn:
+
+                                        self.player.selected_field.figure.set_moveable_fields()
 
                                         if field.coordinates in self.player.selected_field.figure.moveable_fields:
 
@@ -65,16 +74,16 @@ class Game():
                                             self.player.selected_field.is_highlighted = False
                                             self.player.has_selected = False
 
-
-                                    else:
-                                        field.is_highlighted = False
-                                        self.player.has_selected = False
-
-
-
-
                                 else:
-                                    if field.has_figure():
+                                    field.is_highlighted = False
+                                    self.player.has_selected = False
+
+
+
+
+                            else:
+                                if field.has_figure():
+                                    if field.figure.player == self.player.id:
                                         self.player.selected_field = field
                                         self.player.has_selected = True
                                         field.is_highlighted = True
@@ -132,16 +141,27 @@ class Board():
         win_pos_x = 0
 
         for y in range(8):
+
+            if y < 2:
+                owner = 2
+            else:
+                owner = 1
+
+
             for x in range(8):
 
                 if y == 1 or y == 6:
 
-                    figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, self.player)
+                    figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, owner)
 
                 else:
                     figure = None
 
                 self.fields.append(Field(y + 1, x + 1, win_pos_y, win_pos_x, self.field_size, figure))
+
+                if figure:
+                    if figure.player == self.player.id:
+                        self.player.figures.append(figure)
 
                 win_pos_x += self.field_size
 
@@ -214,7 +234,7 @@ class Pawn(Figure):
     def set_moveable_fields(self):
         fields = []
 
-        if self.player.id == 1:
+        if self.player == 1:
             fields.append([self.coordinates[0] - 1, self.coordinates[1]])
         else:
             fields.append([self.coordinates[0] + 1, self.coordinates[1]])
