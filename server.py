@@ -52,7 +52,6 @@ def threaded_client(conn, id):
             elif data == "get-pos-update":
                 if pos_update:
                     conn.send(str.encode(f"{pos_update['move-figure']}, {pos_update['field_id']}"))
-                    pos_update.clear()
                     continue
 
             conn.send(str.encode(" "))

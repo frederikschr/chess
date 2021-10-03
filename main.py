@@ -24,19 +24,17 @@ class Game():
                 sys.exit()
 
     def run(self):
-
         self.board.create()
+        old_pos_update = None
 
         while True:
             turn = int(self.n.send("get-turn"))
 
             pos_update = self.n.send("get-pos-update")
 
-            if pos_update != " ":
+            if pos_update != " " and pos_update != old_pos_update:
+                old_pos_update = pos_update
                 ids = pos_update.split(",")
-
-                print(ids)
-
                 field = self.board.get_field(int(ids[1]))
                 figure = self.board.get_figure(int(ids[0]))
                 field.update_figure(figure)
@@ -45,15 +43,9 @@ class Game():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
 
-
                     for field in self.board.fields:
                         if field.is_clicked(pos[0], pos[1]):
-
-                            print(field.id)
-
                             if self.player.has_selected:
-
-
                                 if field != self.player.selected_field:
 
                                     if self.player.id == turn:
@@ -155,9 +147,9 @@ class Board():
 
                 if figure:
                     figure_id_count += 1
+                    self.figures.append(figure)
                     if figure.player == self.player.id:
                         self.player.figures.append(figure)
-                        self.figures.append(figure)
 
                 field_id_count += 1
                 win_pos_x += self.field_size
