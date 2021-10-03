@@ -1,8 +1,9 @@
 import socket
 from _thread import *
+import ast
 
 server = "192.168.178.75"
-port = 5555
+port = 6666
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -18,8 +19,11 @@ idCount = 0
 
 turn = 1
 
+pos_update = {}
+
 def threaded_client(conn, id):
     global turn
+    global pos_update
     conn.send(str.encode(str(id)))
     while True:
         try:
@@ -27,21 +31,37 @@ def threaded_client(conn, id):
 
             if data == "get-turn":
                 conn.send(str.encode(str(turn)))
+                continue
 
-            if data == "change-turn":
+            elif data == "change-turn":
                 if turn == 1:
-
                     turn = 2
                 else:
                     turn = 1
 
-                conn.send(str.encode("  "))
+            elif "move-figure" in data:
+
+                print(data)
+
+                data = ast.literal_eval(data)
+
+                print(data)
+
+                pos_update = data
+
+            elif data == "get-pos-update":
+                if pos_update:
+                    conn.send(str.encode(f"{pos_update['move-figure']}, {pos_update['field_id']}"))
+                    pos_update.clear()
+                    continue
+
+            conn.send(str.encode(" "))
 
             if not data:
                 break
 
-        except:
-            break
+        except Exception as e:
+            print(e)
 
     print("Lost connection")
     conn.close()

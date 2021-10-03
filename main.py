@@ -23,36 +23,35 @@ class Game():
                 pygame.quit()
                 sys.exit()
 
-
     def run(self):
-
 
         self.board.create()
 
-
         while True:
-
             turn = int(self.n.send("get-turn"))
 
+            pos_update = self.n.send("get-pos-update")
 
+            if pos_update != " ":
+                ids = pos_update.split(",")
+
+                print(ids)
+
+                field = self.board.get_field(int(ids[1]))
+                figure = self.board.get_figure(int(ids[0]))
+                field.update_figure(figure)
 
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
 
 
-
-
-
                     for field in self.board.fields:
-                        if field.is_clicked(pos[0], pos[1]):  #Check if field is clicked
+                        if field.is_clicked(pos[0], pos[1]):
 
-
-
+                            print(field.id)
 
                             if self.player.has_selected:
-
-
 
 
                                 if field != self.player.selected_field:
@@ -63,12 +62,9 @@ class Game():
 
                                         if field.coordinates in self.player.selected_field.figure.moveable_fields:
 
-                                            field.figure = self.player.selected_field.figure
-
-                                            field.update_figure()
+                                            self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
 
                                             self.n.send("change-turn")
-
 
                                             self.player.selected_field.figure = None
                                             self.player.selected_field.is_highlighted = False
@@ -77,9 +73,6 @@ class Game():
                                 else:
                                     field.is_highlighted = False
                                     self.player.has_selected = False
-
-
-
 
                             else:
                                 if field.has_figure():
@@ -99,7 +92,8 @@ class Game():
             pygame.display.update()
 
 class Field():
-    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
+    def __init__(self, id, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
+        self.id = id
         self.coordinates = [game_coord_y, game_coord_x]
         self.win_pos_y = win_pos_y
         self.win_pos_x = win_pos_x
@@ -115,7 +109,8 @@ class Field():
                 return True
         return False
 
-    def update_figure(self):
+    def update_figure(self, figure):
+        self.figure = figure
         self.figure.win_pos_x = self.win_pos_x
         self.figure.win_pos_y = self.win_pos_y
         self.figure.coordinates[0] = self.coordinates[0]
@@ -133,6 +128,7 @@ class Field():
 class Board():
     def __init__(self, player):
         self.fields = []
+        self.figures = []
         self.field_size = height / 8
         self.player = player
 
@@ -140,29 +136,30 @@ class Board():
         win_pos_y = 0
         win_pos_x = 0
 
+        field_id_count = 1
+        figure_id_count = 1
+
+
         for y in range(8):
 
-            if y < 2:
-                owner = 2
-            else:
-                owner = 1
-
+            owner = 2 if y < 2 else 1
 
             for x in range(8):
-
                 if y == 1 or y == 6:
-
-                    figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, owner)
+                    figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner)
 
                 else:
                     figure = None
 
-                self.fields.append(Field(y + 1, x + 1, win_pos_y, win_pos_x, self.field_size, figure))
+                self.fields.append(Field(field_id_count, y + 1, x + 1, win_pos_y, win_pos_x, self.field_size, figure))
 
                 if figure:
+                    figure_id_count += 1
                     if figure.player == self.player.id:
                         self.player.figures.append(figure)
+                        self.figures.append(figure)
 
+                field_id_count += 1
                 win_pos_x += self.field_size
 
             win_pos_x = 0
@@ -190,6 +187,16 @@ class Board():
             if field.has_figure():
                 field.draw_figure()
 
+    def get_field(self, id):
+        for field in self.fields:
+            if field.id == id:
+                return field
+
+    def get_figure(self, id):
+        for figure in self.figures:
+            if figure.id == id:
+                return figure
+
 class Player():
     def __init__(self, id):
 
@@ -206,10 +213,12 @@ class Player():
 
 
 class Figure():
-    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, player):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player):
         self.coordinates = [game_coord_y, game_coord_x]
         self.win_pos_y = win_pos_y
         self.win_pos_x = win_pos_x
+
+        self.id = id
 
         self.player = player
 
@@ -228,8 +237,8 @@ class Figure():
         pass
 
 class Pawn(Figure):
-    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, player):
-        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, player)
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player)
 
     def set_moveable_fields(self):
         fields = []
