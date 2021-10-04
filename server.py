@@ -3,9 +3,10 @@ from _thread import *
 import ast
 
 server = "192.168.178.75"
-port = 6666
+port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
 try:
     s.bind((server, port))
@@ -15,6 +16,8 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection, Server Started")
 
+connections = 0
+
 idCount = 0
 
 turn = 1
@@ -22,8 +25,7 @@ turn = 1
 pos_update = {}
 
 def threaded_client(conn, id):
-    global turn
-    global pos_update
+    global turn, pos_update, connections
     conn.send(str.encode(str(id)))
     while True:
         try:
@@ -33,6 +35,10 @@ def threaded_client(conn, id):
                 conn.send(str.encode(str(turn)))
                 continue
 
+            if data == "get-connections":
+                conn.send(str.encode(str(connections)))
+                continue
+
             elif data == "change-turn":
                 if turn == 1:
                     turn = 2
@@ -40,13 +46,7 @@ def threaded_client(conn, id):
                     turn = 1
 
             elif "move-figure" in data:
-
-                print(data)
-
                 data = ast.literal_eval(data)
-
-                print(data)
-
                 pos_update = data
 
             elif data == "get-pos-update":
@@ -61,16 +61,17 @@ def threaded_client(conn, id):
 
         except Exception as e:
             print(e)
+            break
 
     print("Lost connection")
     conn.close()
-
-
+    connections -= 1
 
 while True:
     conn, addr = s.accept()
     print("Connected to:", addr)
 
     idCount += 1
+    connections += 1
 
     start_new_thread(threaded_client, (conn, idCount))

@@ -24,18 +24,45 @@ class Game():
                 sys.exit()
 
     def run(self):
+        self.menu()
+        self.game()
+
+    def menu(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_DELETE:
+                        return
+
+            connections = int(self.n.send("get-connections"))
+
+            if connections < 2:
+                info = font.render("Waiting for second player...", None, (255, 0, 0))
+                screen.blit(info, (width / 2 - info.get_width() / 2, height / 2))
+            else:
+                break
+
+            title = font.render("Chess", None, (255, 0, 0))
+
+            screen.blit(title, (width / 2 - title.get_width() / 2, height / 3))
+
+            self.handle_quit()
+
+            clock.tick(self.FPS)
+            pygame.display.update()
+
+
+    def game(self):
         self.board.create()
         old_pos_update = None
-
         while True:
             turn = int(self.n.send("get-turn"))
-
             pos_update = self.n.send("get-pos-update")
 
             if pos_update != " " and pos_update != old_pos_update:
                 old_pos_update = pos_update
                 ids = pos_update.split(",")
-                field = self.board.get_field(int(ids[1]))
+                field = self.board.get_field_by_id(int(ids[1]))
                 figure = self.board.get_figure(int(ids[0]))
                 field.update_figure(figure)
 
@@ -76,7 +103,6 @@ class Game():
 
 
             self.board.draw()
-
 
             self.handle_quit()
 
@@ -179,15 +205,23 @@ class Board():
             if field.has_figure():
                 field.draw_figure()
 
-    def get_field(self, id):
+    def get_field_by_id(self, id):
         for field in self.fields:
             if field.id == id:
                 return field
+
+
+    def get_field_by_coords(self, coords):
+        for field in self.fields:
+            if field.coordinates == coords:
+                return field
+        return None
 
     def get_figure(self, id):
         for figure in self.figures:
             if figure.id == id:
                 return figure
+        return None
 
 class Player():
     def __init__(self, id):
@@ -201,8 +235,6 @@ class Player():
         self.selected_field = None
 
         self.has_selected = False
-
-
 
 class Figure():
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player):
@@ -226,7 +258,7 @@ class Figure():
         pass
 
     def set_moveable_fields(self):
-        pass
+        raise NotImplementedError("Please Implement this method")
 
 class Pawn(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player):
@@ -236,6 +268,10 @@ class Pawn(Figure):
         fields = []
 
         if self.player == 1:
+
+            #field_tr = self.board.get_field_by_coords([self.coordinates[0] - 1, self.coordinates[1] + 1])
+            #field_tl = self.board.get_field_by_coords([self.coordinates[0] - 1, self.coordinates[1] - 1])
+
             fields.append([self.coordinates[0] - 1, self.coordinates[1]])
         else:
             fields.append([self.coordinates[0] + 1, self.coordinates[1]])
