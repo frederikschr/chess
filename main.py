@@ -8,39 +8,36 @@ class Game():
         self.FPS = 60
         self.over = False
 
-        self.n = Network()
-
-        self.player_id = int(self.n.get_id())
-
-        self.player = Player(self.player_id)
-
-        self.board = Board(self.player)
-
-
     def handle_quit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-    def run(self):
-        self.menu()
-        self.game()
+    def connect(self):
+        try:
+            self.n = Network()
+            self.player_id = int(self.n.get_id())
+            self.player = Player(self.player_id)
+            self.board = Board(self.player)
+            return True
+        except:
+            return False
+
 
     def menu(self):
         while True:
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_DELETE:
-                        return
+            connect_btn = Button((255, 0, 0), width / 2 - 50, height / 1.5, 100, 100, text="Play")
+            connect_btn.draw()
 
-            connections = int(self.n.send("get-connections"))
-
-            if connections < 2:
-                info = font.render("Waiting for second player...", None, (255, 0, 0))
-                screen.blit(info, (width / 2 - info.get_width() / 2, height / 2))
-            else:
-                break
+            if connect_btn.isClicked(pygame.mouse.get_pos()):
+                if self.connect():
+                    connections = int(self.n.send("get-connections"))
+                    if connections < 2:
+                        info = font.render("Waiting for second player...", None, (255, 0, 0))
+                        screen.blit(info, (width / 2 - info.get_width() / 2, height / 2))
+                    else:
+                        break
 
             title = font.render("Chess", None, (255, 0, 0))
 
@@ -50,6 +47,10 @@ class Game():
 
             clock.tick(self.FPS)
             pygame.display.update()
+
+    def run(self):
+        self.menu()
+        self.game()
 
 
     def game(self):
@@ -278,6 +279,47 @@ class Pawn(Figure):
 
         self.moveable_fields = fields
 
+class Button():
+    def __init__(self, color, x, y, width, height, text=None, text_size=None):
+        self.color = color
+        self.default_color = color
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.text = text
+        self.text_size = text_size
+
+
+    def draw(self, outline=None, transparent=False):
+        if outline:
+            pygame.draw.rect(screen, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), 0)
+
+        if transparent:
+                rect = pygame.Surface((self.width, self.height))
+                rect.set_alpha(128)
+                rect.fill(self.color)
+                screen.blit(rect, (self.x, self.y))
+        else:
+            pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height), 0)
+
+        if self.text:
+            font = pygame.font.SysFont('comicsans', self.text_size if self.text_size else 30)
+            text = font.render(self.text, 1, (255, 255, 255))
+            screen.blit(text, (self.x + (self.width / 2 - text.get_width() / 2), self.y + (self.height / 2 - text.get_height() / 2)))
+
+    def isOver(self, pos):
+        if pos[0] > self.x and pos[0] < self.x + self.width:
+            if pos[1] > self.y and pos[1] < self.y + self.height:
+                return True
+        return False
+
+    def isClicked(self, pos):
+        if self.isOver(pos):
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return True
+        return False
 
 pygame.init()
 
