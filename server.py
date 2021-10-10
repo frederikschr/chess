@@ -16,13 +16,9 @@ s.listen(2)
 print("Waiting for a connection, Server Started")
 
 connections = 0
-
 idCount = 0
-
 turn = 1
-
 pos_update = {}
-
 figure_ids = []
 
 def threaded_client(conn, id):
