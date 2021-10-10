@@ -143,6 +143,10 @@ class Field():
         self.figure.coordinates[0] = self.coordinates[0]
         self.figure.coordinates[1] = self.coordinates[1]
 
+        if isinstance(figure, Pawn):
+            if figure.first_move:
+                figure.first_move = False
+
     def has_figure(self):
         return True if self.figure else False
 
@@ -272,6 +276,7 @@ class Figure():
 class Pawn(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+        self.first_move = True
 
     def set_moveable_fields(self):
         fields = []
@@ -286,6 +291,9 @@ class Pawn(Figure):
                 if field_tl.has_figure():
                     fields.append(field_tl.coordinates)
             fields.append([self.coordinates[0] - 1, self.coordinates[1]])
+            if self.first_move:
+                fields.append([self.coordinates[0] - 2, self.coordinates[1]])
+
         else:
             field_tr = self.board.get_field_by_coords([self.coordinates[0] + 1, self.coordinates[1] + 1])
             field_tl = self.board.get_field_by_coords([self.coordinates[0] + 1, self.coordinates[1] - 1])
@@ -296,6 +304,8 @@ class Pawn(Figure):
                 if field_tl.has_figure():
                     fields.append(field_tl.coordinates)
             fields.append([self.coordinates[0] + 1, self.coordinates[1]])
+            if self.first_move:
+                fields.append([self.coordinates[0] + 2, self.coordinates[1]])
 
         self.moveable_fields = fields
 
