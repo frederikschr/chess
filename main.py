@@ -90,7 +90,7 @@ class Game():
                     pos = pygame.mouse.get_pos()
                     for field in self.board.fields:
                         if field.is_clicked(pos[0], pos[1]):
-                            if self.player.has_selected:
+                            if self.player.selected_field:
                                 if field != self.player.selected_field:
                                     if self.player.id == turn:
                                         if isinstance(self.player.selected_field.figure, King):
@@ -108,17 +108,15 @@ class Game():
                                             self.player.selected_field.figure = None
                                             self.player.selected_field.is_highlighted = False
                                             self.player.selected_field = None
-                                            self.player.has_selected = False
+
 
                                 else:
                                     field.is_highlighted = False
-                                    self.player.has_selected = False
                                     self.player.selected_field = None
                             else:
                                 if field.has_figure():
                                     if field.figure.player == self.player.id:
                                         self.player.selected_field = field
-                                        self.player.has_selected = True
                                         field.is_highlighted = True
 
             self.board.draw()
@@ -279,7 +277,6 @@ class Player():
 
         self.selected_field = None
 
-        self.has_selected = False
 
 class Figure():
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
