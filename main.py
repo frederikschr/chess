@@ -109,7 +109,6 @@ class Game():
                                             self.player.selected_field.is_highlighted = False
                                             self.player.selected_field = None
 
-
                                 else:
                                     field.is_highlighted = False
                                     self.player.selected_field = None
@@ -173,13 +172,10 @@ class Board():
     def create(self):
         win_pos_y = 0
         win_pos_x = 0
-
         field_id_count = 1
         figure_id_count = 1
-
         for y in range(8):
             owner = 2 if y < 2 else 1
-
             for x in range(8):
                 if y == 1 or y == 6:
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -187,10 +183,8 @@ class Board():
                 elif y == 0 or y == 7:
                     if x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
                     else:
                         figure = None
-
                 else:
                     figure = None
 
@@ -268,7 +262,6 @@ class Board():
 
 class Player():
     def __init__(self, id):
-
         self.id = id
 
         self.figures = []
@@ -276,7 +269,6 @@ class Player():
         self.has_turn = False
 
         self.selected_field = None
-
 
 class Figure():
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -314,32 +306,28 @@ class Pawn(Figure):
 
     def set_moveable_fields(self):
         fields = []
-
         if self.player == 1:
-            field_tr = self.board.get_field_by_coords([self.coordinates[0] - 1, self.coordinates[1] + 1])
-            field_tl = self.board.get_field_by_coords([self.coordinates[0] - 1, self.coordinates[1] - 1])
-            if field_tr:
-                if field_tr.has_figure():
-                    fields.append(field_tr.coordinates)
-            if field_tl:
-                if field_tl.has_figure():
-                    fields.append(field_tl.coordinates)
-            fields.append([self.coordinates[0] - 1, self.coordinates[1]])
-            if self.first_move:
-                fields.append([self.coordinates[0] - 2, self.coordinates[1]])
-
+            direction = -1
         else:
-            field_tr = self.board.get_field_by_coords([self.coordinates[0] + 1, self.coordinates[1] + 1])
-            field_tl = self.board.get_field_by_coords([self.coordinates[0] + 1, self.coordinates[1] - 1])
-            if field_tr:
-                if field_tr.has_figure():
-                    fields.append(field_tr.coordinates)
-            if field_tl:
-                if field_tl.has_figure():
-                    fields.append(field_tl.coordinates)
-            fields.append([self.coordinates[0] + 1, self.coordinates[1]])
-            if self.first_move:
-                fields.append([self.coordinates[0] + 2, self.coordinates[1]])
+            direction = 1
+
+        field_tr = self.board.get_field_by_coords([self.coordinates[0] + direction, self.coordinates[1] + 1])
+        field_tl = self.board.get_field_by_coords([self.coordinates[0] + direction, self.coordinates[1] - 1])
+        field_top = self.board.get_field_by_coords([self.coordinates[0] + direction, self.coordinates[1]])
+        field_top2 = self.board.get_field_by_coords([self.coordinates[0] + direction * 2, self.coordinates[1]])
+
+        if field_tr:
+            if field_tr.has_figure():
+                fields.append(field_tr.coordinates)
+        if field_tl:
+            if field_tl.has_figure():
+                fields.append(field_tl.coordinates)
+        if field_top:
+            if not field_top.has_figure():
+                fields.append(field_top.coordinates)
+        if self.first_move:
+            if field_top2:
+                fields.append(field_top2.coordinates)
 
         self.moveable_fields = fields
 
