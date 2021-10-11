@@ -62,10 +62,12 @@ class Game():
         while True:
             turn = int(self.n.send("get-turn"))
             pos_update = self.n.send("get-pos-update")
+            update_fields = False
             figure_ids = ast.literal_eval(self.n.send("get-figures"))
 
             if pos_update != "200" and pos_update != old_pos_update:
                 old_pos_update = pos_update
+                update_fields = True
                 ids = pos_update.split(",")
                 field = self.board.get_field_by_id(int(ids[1]))
                 figure = self.board.get_figure(int(ids[0]))
@@ -79,17 +81,21 @@ class Game():
                     for field in self.board.fields:
                         if field.figure == figure:
                             field.figure = None
+                else:
+                    if update_fields:
+                        figure.set_moveable_fields()
 
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
-
                     for field in self.board.fields:
                         if field.is_clicked(pos[0], pos[1]):
                             if self.player.has_selected:
                                 if field != self.player.selected_field:
                                     if self.player.id == turn:
-                                        self.player.selected_field.figure.set_moveable_fields()
+                                        if isinstance(self.player.selected_field.figure, King):
+                                            self.player.selected_field.figure.check_fields()
+
                                         if field.coordinates in self.player.selected_field.figure.moveable_fields:
                                             if field.has_figure():
                                                 if field.figure in self.player.figures:
@@ -101,11 +107,13 @@ class Game():
                                             self.n.send("change-turn")
                                             self.player.selected_field.figure = None
                                             self.player.selected_field.is_highlighted = False
+                                            self.player.selected_field = None
                                             self.player.has_selected = False
 
                                 else:
                                     field.is_highlighted = False
                                     self.player.has_selected = False
+                                    self.player.selected_field = None
                             else:
                                 if field.has_figure():
                                     if field.figure.player == self.player.id:
@@ -125,6 +133,7 @@ class Field():
         self.win_pos_y = win_pos_y
         self.win_pos_x = win_pos_x
         self.size = size
+        self.color = ()
 
         self.is_highlighted = False
 
@@ -176,6 +185,14 @@ class Board():
             for x in range(8):
                 if y == 1 or y == 6:
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                elif y == 0 or y == 7:
+                    if x == 4:
+                        figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    else:
+                        figure = None
+
                 else:
                     figure = None
 
@@ -193,7 +210,10 @@ class Board():
             win_pos_x = 0
             win_pos_y += self.field_size
 
-    def draw(self):
+            self.color_fields()
+            self.set_all_moveable_fields()
+
+    def color_fields(self):
         for field in self.fields:
             if field.coordinates[0] % 2 == 0:
                 if field.coordinates[1] % 2 == 0:
@@ -206,13 +226,30 @@ class Board():
                 else:
                     color = (255, 255, 255)
 
+            field.color = color
+
+    def draw(self):
+        for field in self.fields:
+            outline = False
+            if self.player.selected_field:
+                if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                    outline = True
+                else:
+                    outline = False
+
             if field.is_highlighted:
                 pygame.draw.rect(screen, (255, 0, 0), (field.win_pos_x, field.win_pos_y, self.field_size, self.field_size))
             else:
-                pygame.draw.rect(screen, color, (field.win_pos_x, field.win_pos_y, self.field_size, self.field_size))
+                pygame.draw.rect(screen, field.color, (field.win_pos_x, field.win_pos_y, self.field_size, self.field_size))
+                if outline:
+                    pygame.draw.rect(screen, (0, 0, 255), (field.win_pos_x, field.win_pos_y, self.field_size, self.field_size), 3)
 
             if field.has_figure():
                 field.draw_figure()
+
+    def set_all_moveable_fields(self):
+        for figure in self.figures:
+            figure.set_moveable_fields()
 
     def get_field_by_id(self, id):
         for field in self.fields:
@@ -308,6 +345,42 @@ class Pawn(Figure):
                 fields.append([self.coordinates[0] + 2, self.coordinates[1]])
 
         self.moveable_fields = fields
+
+class King(Figure):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+        self.first_move = True
+
+    def set_moveable_fields(self):
+        fields = []
+
+
+
+
+
+        fields.append([self.coordinates[0] + 1, self.coordinates[1]])
+        fields.append([self.coordinates[0] + 1, self.coordinates[1] + 1])
+        fields.append([self.coordinates[0], self.coordinates[1] + 1])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1] + 1])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1]])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1] - 1])
+        fields.append([self.coordinates[0], self.coordinates[1] - 1])
+        fields.append([self.coordinates[0] + 1, self.coordinates[1] - 1])
+
+        self.moveable_fields = fields
+
+    def check_fields(self):
+        for field in self.moveable_fields:
+            for figure in self.board.figures:
+                if figure.id != self.id:
+                    figure.set_moveable_fields()
+                    if figure.player != self.board.player:
+                        if field in figure.moveable_fields and field in self.moveable_fields:
+                            self.moveable_fields.remove(field)
+
+
+
+
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
