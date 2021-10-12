@@ -93,15 +93,30 @@ class Game():
                             if self.player.selected_field:
                                 if field != self.player.selected_field:
                                     if self.player.id == turn:
+
                                         if isinstance(self.player.selected_field.figure, King):
                                             self.player.selected_field.figure.check_fields()
 
                                         if field.coordinates in self.player.selected_field.figure.moveable_fields:
-                                            if field.has_figure():
-                                                if field.figure in self.player.figures:
-                                                    continue
-                                                else:
-                                                    self.n.send(str({"remove-figure": field.figure.id}))
+
+                                            if not self.board.king.in_check():
+                                                if field.has_figure():
+                                                    if field.figure in self.player.figures:
+                                                        break
+                                                    else:
+                                                        self.n.send(str({"remove-figure": field.figure.id}))
+
+                                            else:
+                                                if not self.player.selected_field.coordinates == self.board.king.coordinates:
+                                                    break
+
+                                                for figure in self.board.figures:
+                                                    if not figure in self.board.player.figures:
+                                                        if field.coordinates in figure.moveable_fields:
+
+                                                            print("here2")
+
+                                                            break
 
                                             self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
                                             self.n.send("change-turn")
@@ -169,6 +184,8 @@ class Board():
         self.field_size = height / 8
         self.player = player
 
+        self.king = None
+
     def create(self):
         win_pos_y = 0
         win_pos_x = 0
@@ -183,6 +200,9 @@ class Board():
                 elif y == 0 or y == 7:
                     if x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+                        if figure.player == self.player.id:
+                            self.king = figure
+
                     else:
                         figure = None
                 else:
@@ -265,6 +285,7 @@ class Player():
         self.id = id
 
         self.figures = []
+
         self.has_won = False
         self.has_turn = False
 
@@ -340,10 +361,6 @@ class King(Figure):
     def set_moveable_fields(self):
         fields = []
 
-
-
-
-
         fields.append([self.coordinates[0] + 1, self.coordinates[1]])
         fields.append([self.coordinates[0] + 1, self.coordinates[1] + 1])
         fields.append([self.coordinates[0], self.coordinates[1] + 1])
@@ -360,13 +377,16 @@ class King(Figure):
             for figure in self.board.figures:
                 if figure.id != self.id:
                     figure.set_moveable_fields()
-                    if figure.player != self.board.player:
+                    if figure.player != self.board.player.id:
                         if field in figure.moveable_fields and field in self.moveable_fields:
                             self.moveable_fields.remove(field)
 
-
-
-
+    def in_check(self):
+        for figure in self.board.figures:
+            if figure not in self.board.player.figures:
+                if self.coordinates in figure.moveable_fields:
+                    return True
+        return False
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
