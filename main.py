@@ -327,7 +327,8 @@ class Pawn(Figure):
                 fields.append(field_top.coordinates)
         if self.first_move:
             if field_top2:
-                fields.append(field_top2.coordinates)
+                if not field_top2.has_figure():
+                    fields.append(field_top2.coordinates)
 
         self.moveable_fields = fields
 
