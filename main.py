@@ -305,6 +305,9 @@ class Figure():
 
         self.moveable_fields = []
 
+
+
+
     def draw(self):
         if self.player == 1:
             pygame.draw.rect(screen, (255, 0, 0), (self.win_pos_x, self.win_pos_y, 50, 50))
@@ -324,9 +327,12 @@ class Pawn(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
         self.first_move = True
+        self.beatable_fields = []
 
     def set_moveable_fields(self):
         fields = []
+        beatable_fields = []
+
         if self.player == 1:
             direction = -1
         else:
@@ -340,9 +346,11 @@ class Pawn(Figure):
         if field_tr:
             if field_tr.has_figure():
                 fields.append(field_tr.coordinates)
+                self.beatable_fields.append(field_tr.coordinates)
         if field_tl:
             if field_tl.has_figure():
                 fields.append(field_tl.coordinates)
+                self.beatable_fields.append(field_tl.coordinates)
         if field_top:
             if not field_top.has_figure():
                 fields.append(field_top.coordinates)
@@ -352,6 +360,7 @@ class Pawn(Figure):
                     fields.append(field_top2.coordinates)
 
         self.moveable_fields = fields
+        self.beatable_fields = beatable_fields
 
 class King(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -378,8 +387,12 @@ class King(Figure):
                 if figure.id != self.id:
                     figure.set_moveable_fields()
                     if figure.player != self.board.player.id:
-                        if field in figure.moveable_fields and field in self.moveable_fields:
-                            self.moveable_fields.remove(field)
+                        if isinstance(figure, Pawn):
+                            if field in figure.beatable_fields and field in self.moveable_fields:
+                                self.moveable_fields.remove(field)
+                        else:
+                            if field in figure.moveable_fields and field in self.moveable_fields:
+                                self.moveable_fields.remove(field)
 
     def in_check(self):
         for figure in self.board.figures:
