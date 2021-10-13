@@ -20,9 +20,10 @@ idCount = 0
 turn = 1
 pos_update = {}
 figure_ids = []
+has_won = None
 
 def threaded_client(conn, id):
-    global turn, pos_update, connections, figure_ids
+    global turn, pos_update, connections, figure_ids, has_won
     conn.send(str.encode(str(id)))
     while True:
         try:
@@ -48,6 +49,13 @@ def threaded_client(conn, id):
                 data = ast.literal_eval(data)
                 figure_ids = data["set-figures"]
 
+            elif "has_won" in data:
+                data = ast.literal_eval(data)
+
+                print(data)
+
+                has_won = data["has_won"]
+
             #Get
             elif data == "get-turn":
                 conn.send(str.encode(str(turn)))
@@ -65,6 +73,9 @@ def threaded_client(conn, id):
             elif data == "get-figures":
                 conn.send(str.encode(str(figure_ids)))
                 continue
+
+            elif data == "get-won":
+                conn.send(str.encode(str(has_won)))
 
             conn.send(str.encode("200"))
 

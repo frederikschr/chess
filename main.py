@@ -64,6 +64,7 @@ class Game():
             pos_update = self.n.send("get-pos-update")
             update_fields = False
             figure_ids = ast.literal_eval(self.n.send("get-figures"))
+            #has_won = self.n.send("get-won")
 
             if pos_update != "200" and pos_update != old_pos_update:
                 old_pos_update = pos_update
@@ -85,42 +86,47 @@ class Game():
                     if update_fields:
                         figure.set_moveable_fields()
 
-            for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = pygame.mouse.get_pos()
-                    for field in self.board.fields:
-                        if field.is_clicked(pos[0], pos[1]):
-                            if self.player.selected_field:
-                                if field != self.player.selected_field:
-                                    if self.player.id == turn:
+            if not self.board.king.is_checkmate():
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        pos = pygame.mouse.get_pos()
+                        for field in self.board.fields:
+                            if field.is_clicked(pos[0], pos[1]):
+                                if self.player.selected_field:
+                                    if field != self.player.selected_field:
+                                        if self.player.id == turn:
 
-                                        if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                                            if field.coordinates in self.player.selected_field.figure.moveable_fields:
 
-                                            if not self.board.king.in_check():
-                                                if field.has_figure():
-                                                    if field.figure in self.player.figures:
+                                                if not self.board.king.in_check():
+                                                    if field.has_figure():
+                                                        if field.figure in self.player.figures:
+                                                            break
+                                                        else:
+                                                            self.n.send(str({"remove-figure": field.figure.id}))
+
+                                                else:
+                                                    if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                         break
-                                                    else:
-                                                        self.n.send(str({"remove-figure": field.figure.id}))
 
-                                            else:
-                                                if not self.player.selected_field.coordinates == self.board.king.coordinates:
-                                                    break
+                                                self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
+                                                self.n.send("change-turn")
+                                                self.player.selected_field.figure = None
+                                                self.player.selected_field.is_highlighted = False
+                                                self.player.selected_field = None
 
-                                            self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
-                                            self.n.send("change-turn")
-                                            self.player.selected_field.figure = None
-                                            self.player.selected_field.is_highlighted = False
-                                            self.player.selected_field = None
-
+                                    else:
+                                        field.is_highlighted = False
+                                        self.player.selected_field = None
                                 else:
-                                    field.is_highlighted = False
-                                    self.player.selected_field = None
-                            else:
-                                if field.has_figure():
-                                    if field.figure.player == self.player.id:
-                                        self.player.selected_field = field
-                                        field.is_highlighted = True
+                                    if field.has_figure():
+                                        if field.figure.player == self.player.id:
+                                            self.player.selected_field = field
+                                            field.is_highlighted = True
+
+            else:
+                self.n.send(str({"has_won": 2 if self.player.id == 1 else 1}))
+
 
             self.board.draw()
             self.handle_quit()
@@ -187,7 +193,10 @@ class Board():
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
                 elif y == 0 or y == 7:
-                    if x == 4:
+                    if x == 0 or x == 7:
+                        figure = Rook(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
                         if figure.player == self.player.id:
                             self.king = figure
@@ -396,6 +405,32 @@ class King(Figure):
                 if self.coordinates in figure.moveable_fields:
                     return True
         return False
+
+    def is_checkmate(self):
+        return True if self.moveable_fields == [] else False
+
+class Rook(Figure):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+    def set_moveable_fields(self):
+        fields = []
+
+        y_couter = 1
+        x_couter = 1
+
+        for i in range(8):
+            field = self.board.get_field_by_coords([self.coordinates[0] + y_couter, self.coordinates[1]])
+            if field:
+                if field.has_figure():
+                    if field.figure.player != self.player:
+                        fields.append(field.coordinates)
+                        break
+                else:
+                    fields.append(field.coordinates)
+                    y_couter += 1
+
+        self.moveable_fields = fields
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
