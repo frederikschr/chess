@@ -416,19 +416,39 @@ class Rook(Figure):
     def set_moveable_fields(self):
         fields = []
 
-        y_couter = 1
-        x_couter = 1
+        for i in range(4):
+            if i == 0:
+                y_counter = 1
+                x_counter = 0
+            elif i == 1:
+                y_counter = -1
+                x_counter = 0
+            elif i == 2:
+                y_counter = 0
+                x_counter = 1
+            else:
+                y_counter = 0
+                x_counter = -1
 
-        for i in range(8):
-            field = self.board.get_field_by_coords([self.coordinates[0] + y_couter, self.coordinates[1]])
-            if field:
-                if field.has_figure():
-                    if field.figure.player != self.player:
+            for i in range(8):
+                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+                if field:
+                    if field.has_figure():
+                        if field.figure.player != self.player:
+                            fields.append(field.coordinates)
+                            break
+                    else:
                         fields.append(field.coordinates)
-                        break
-                else:
-                    fields.append(field.coordinates)
-                    y_couter += 1
+                        if y_counter != 0:
+                            if y_counter > 0:
+                                y_counter += 1
+                            else:
+                                y_counter -= 1
+                        else:
+                            if x_counter > 0:
+                                x_counter += 1
+                            else:
+                                x_counter -= 1
 
         self.moveable_fields = fields
 
