@@ -94,9 +94,6 @@ class Game():
                                 if field != self.player.selected_field:
                                     if self.player.id == turn:
 
-                                        if isinstance(self.player.selected_field.figure, King):
-                                            self.player.selected_field.figure.check_fields()
-
                                         if field.coordinates in self.player.selected_field.figure.moveable_fields:
 
                                             if not self.board.king.in_check():
@@ -222,8 +219,8 @@ class Board():
             win_pos_x = 0
             win_pos_y += self.field_size
 
-            self.color_fields()
-            self.set_all_moveable_fields()
+        self.color_fields()
+        self.set_all_moveable_fields()
 
     def color_fields(self):
         for field in self.fields:
@@ -274,6 +271,14 @@ class Board():
                 return field
         return None
 
+    def get_fields_by_coords(self, coords):
+        fields = []
+        for field in self.fields:
+            if field.coordinates in coords:
+                fields.append(field)
+
+        return fields
+
     def get_figure(self, id):
         for figure in self.figures:
             if figure.id == id:
@@ -304,9 +309,6 @@ class Figure():
         self.player = player
 
         self.moveable_fields = []
-
-
-
 
     def draw(self):
         if self.player == 1:
@@ -346,11 +348,11 @@ class Pawn(Figure):
         if field_tr:
             if field_tr.has_figure():
                 fields.append(field_tr.coordinates)
-                self.beatable_fields.append(field_tr.coordinates)
+            beatable_fields.append(field_tr.coordinates)
         if field_tl:
             if field_tl.has_figure():
                 fields.append(field_tl.coordinates)
-                self.beatable_fields.append(field_tl.coordinates)
+            beatable_fields.append(field_tl.coordinates)
         if field_top:
             if not field_top.has_figure():
                 fields.append(field_top.coordinates)
@@ -365,34 +367,36 @@ class Pawn(Figure):
 class King(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
-        self.first_move = True
 
     def set_moveable_fields(self):
         fields = []
+        field_objs = self.board.get_fields_by_coords([[self.coordinates[0] + 1, self.coordinates[1]],
+                                                  [self.coordinates[0] + 1, self.coordinates[1] + 1],
+                                                  [self.coordinates[0], self.coordinates[1] + 1],
+                                                  [self.coordinates[0] - 1, self.coordinates[1] + 1],
+                                                  [self.coordinates[0] - 1, self.coordinates[1]],
+                                                  [self.coordinates[0] - 1, self.coordinates[1] - 1],
+                                                  [self.coordinates[0], self.coordinates[1] - 1],
+                                                  [self.coordinates[0] + 1, self.coordinates[1] - 1]])
 
-        fields.append([self.coordinates[0] + 1, self.coordinates[1]])
-        fields.append([self.coordinates[0] + 1, self.coordinates[1] + 1])
-        fields.append([self.coordinates[0], self.coordinates[1] + 1])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1] + 1])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1]])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1] - 1])
-        fields.append([self.coordinates[0], self.coordinates[1] - 1])
-        fields.append([self.coordinates[0] + 1, self.coordinates[1] - 1])
+        for field in field_objs:
+            append = True
+            for figure in self.board.figures:
+                if figure.player != self.player:
+                    if isinstance(figure, Pawn):
+                        if field.coordinates in figure.beatable_fields:
+                            append = False
+                    else:
+                        if field.coordinates in figure.moveable_fields:
+                            append = False
+
+            if field.has_figure():
+                if field.figure.player == self.player:
+                    append = False
+            if append:
+                fields.append(field.coordinates)
 
         self.moveable_fields = fields
-
-    def check_fields(self):
-        for field in self.moveable_fields:
-            for figure in self.board.figures:
-                if figure.id != self.id:
-                    figure.set_moveable_fields()
-                    if figure.player != self.board.player.id:
-                        if isinstance(figure, Pawn):
-                            if field in figure.beatable_fields and field in self.moveable_fields:
-                                self.moveable_fields.remove(field)
-                        else:
-                            if field in figure.moveable_fields and field in self.moveable_fields:
-                                self.moveable_fields.remove(field)
 
     def in_check(self):
         for figure in self.board.figures:
