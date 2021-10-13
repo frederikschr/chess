@@ -196,6 +196,9 @@ class Board():
                     if x == 0 or x == 7:
                         figure = Rook(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
+                    elif x == 3:
+                        figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
                     elif x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
                         if figure.player == self.player.id:
@@ -358,9 +361,11 @@ class Pawn(Figure):
             if not field_top.has_figure():
                 fields.append(field_top.coordinates)
         if self.first_move:
-            if field_top2:
-                if not field_top2.has_figure():
-                    fields.append(field_top2.coordinates)
+            if field_top:
+                if not field_top.has_figure():
+                    if field_top2:
+                        if not field_top2.has_figure():
+                            fields.append(field_top2.coordinates)
 
         self.moveable_fields = fields
         self.beatable_fields = beatable_fields
@@ -407,7 +412,7 @@ class King(Figure):
         return False
 
     def is_checkmate(self):
-        return True if self.moveable_fields == [] else False
+        return True if self.moveable_fields == [] and self.in_check() else False
 
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -430,7 +435,7 @@ class Rook(Figure):
                 y_counter = 0
                 x_counter = -1
 
-            for i in range(8):
+            for i in range(9):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
@@ -451,6 +456,67 @@ class Rook(Figure):
                                 x_counter -= 1
 
         self.moveable_fields = fields
+
+class Queen(Figure):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+    def set_moveable_fields(self):
+        fields = []
+
+        for i in range(8):
+            if i == 0:
+                y_counter = 1
+                x_counter = 0
+            elif i == 1:
+                y_counter = -1
+                x_counter = 0
+            elif i == 2:
+                y_counter = 0
+                x_counter = 1
+
+            elif i == 3:
+                y_counter = 0
+                x_counter = -1
+
+            elif i == 4:
+                y_counter = -1
+                x_counter = -1
+
+            elif i == 5:
+                y_counter = 1
+                x_counter = 1
+
+            elif i == 6:
+                y_counter = 1
+                x_counter = -1
+
+            else:
+                y_counter = -1
+                x_counter = 1
+
+            for i in range(9):
+                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+                if field:
+                    if field.has_figure():
+                        if field.figure.player != self.player:
+                            fields.append(field.coordinates)
+                            break
+                    else:
+                        fields.append(field.coordinates)
+                        if y_counter != 0:
+                            if y_counter > 0:
+                                y_counter += 1
+                            else:
+                                y_counter -= 1
+                        if x_counter != 0:
+                            if x_counter > 0:
+                                x_counter += 1
+                            else:
+                                x_counter -= 1
+
+        self.moveable_fields = fields
+
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
