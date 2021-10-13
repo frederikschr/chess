@@ -107,14 +107,6 @@ class Game():
                                                 if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                     break
 
-                                                for figure in self.board.figures:
-                                                    if not figure in self.board.player.figures:
-                                                        if field.coordinates in figure.moveable_fields:
-
-                                                            print("here2")
-
-                                                            break
-
                                             self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
                                             self.n.send("change-turn")
                                             self.player.selected_field.figure = None
