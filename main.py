@@ -103,8 +103,11 @@ class Game():
 
                                             else:
                                                 if field.coordinates in self.player.selected_field.figure.moveable_fields:
-                                                    if not self.player.selected_field.coordinates == self.board.king.coordinates:
-                                                        break
+                                                    if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
+                                                        if not self.player.selected_field.coordinates == self.board.king.coordinates:
+                                                            break
+                                                    else:
+                                                        self.n.send(str({"remove-figure": field.figure.id}))
                                                 else:
                                                     break
 
@@ -376,6 +379,7 @@ class Pawn(Figure):
 class King(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+        self.attacker = None
 
     def set_moveable_fields(self):
         fields = []
@@ -412,11 +416,27 @@ class King(Figure):
         for figure in self.board.figures:
             if figure not in self.board.player.figures:
                 if self.coordinates in figure.moveable_fields:
+                    self.attacker = figure
                     return True
         return False
 
+
+    def get_attacker_beaters(self):
+        figures = []
+        if self.attacker:
+            for figure in self.board.player.figures:
+                if self.attacker.coordinates in figure.moveable_fields:
+                    figures.append(figure)
+
+        return figures
+
     def is_checkmate(self):
-        return True if self.moveable_fields == [] and self.in_check() else False
+        if self.moveable_fields == [] and self.in_check():
+            return True
+
+
+
+
 
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
