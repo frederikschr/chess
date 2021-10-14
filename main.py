@@ -72,6 +72,8 @@ class Game():
                 ids = pos_update.split(",")
                 field = self.board.get_field_by_id(int(ids[1]))
                 figure = self.board.get_figure(int(ids[0]))
+                old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
+                old_field.figure = None
                 field.update_figure(figure)
 
             for figure in self.board.figures:
@@ -82,9 +84,9 @@ class Game():
                     for field in self.board.fields:
                         if field.figure == figure:
                             field.figure = None
-                else:
-                    if update_fields:
-                        figure.set_moveable_fields()
+
+            if update_fields:
+                self.board.set_all_moveable_fields()
 
             if not self.board.king.is_checkmate():
                 for event in pygame.event.get():
@@ -95,25 +97,27 @@ class Game():
                                 if self.player.selected_field:
                                     if field != self.player.selected_field:
                                         if self.player.id == turn:
-
-                                            if field.coordinates in self.player.selected_field.figure.moveable_fields:
-
-                                                if not self.board.king.in_check():
-                                                    if field.has_figure():
-                                                        if field.figure in self.player.figures:
-                                                            break
-                                                        else:
+                                            if not self.board.king.in_check():
+                                                if field.has_figure():
+                                                    if field.figure in self.player.figures:
+                                                        break
+                                                    else:
+                                                        if field.coordinates in self.player.selected_field.figure.moveable_fields:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
 
-                                                else:
+                                            else:
+                                                if field.coordinates in self.player.selected_field.figure.moveable_fields:
                                                     if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                         break
 
-                                                self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
-                                                self.n.send("change-turn")
-                                                self.player.selected_field.figure = None
-                                                self.player.selected_field.is_highlighted = False
-                                                self.player.selected_field = None
+                                                else:
+                                                    break
+
+                                            self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
+                                            self.n.send("change-turn")
+                                            self.player.selected_field.figure = None
+                                            self.player.selected_field.is_highlighted = False
+                                            self.player.selected_field = None
 
                                     else:
                                         field.is_highlighted = False
@@ -262,7 +266,10 @@ class Board():
 
     def set_all_moveable_fields(self):
         for figure in self.figures:
-            figure.set_moveable_fields()
+            if not isinstance(figure, King):
+                figure.set_moveable_fields()
+
+        self.king.check_fields()
 
     def get_field_by_id(self, id):
         for field in self.fields:
@@ -376,14 +383,36 @@ class King(Figure):
 
     def set_moveable_fields(self):
         fields = []
+
+        fields.append([self.coordinates[0] + 1, self.coordinates[1]])
+        fields.append([self.coordinates[0] + 1, self.coordinates[1] + 1])
+        fields.append([self.coordinates[0], self.coordinates[1] + 1])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1] + 1])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1]])
+        fields.append([self.coordinates[0] - 1, self.coordinates[1] - 1])
+        fields.append([self.coordinates[0], self.coordinates[1] - 1])
+        fields.append([self.coordinates[0] + 1, self.coordinates[1] - 1])
+
+
+        self.moveable_fields = fields
+
+
+    def check_fields(self):
+
+        print("here")
+
+
+        fields = []
+
+
         field_objs = self.board.get_fields_by_coords([[self.coordinates[0] + 1, self.coordinates[1]],
-                                                  [self.coordinates[0] + 1, self.coordinates[1] + 1],
-                                                  [self.coordinates[0], self.coordinates[1] + 1],
-                                                  [self.coordinates[0] - 1, self.coordinates[1] + 1],
-                                                  [self.coordinates[0] - 1, self.coordinates[1]],
-                                                  [self.coordinates[0] - 1, self.coordinates[1] - 1],
-                                                  [self.coordinates[0], self.coordinates[1] - 1],
-                                                  [self.coordinates[0] + 1, self.coordinates[1] - 1]])
+                                                      [self.coordinates[0] + 1, self.coordinates[1] + 1],
+                                                      [self.coordinates[0], self.coordinates[1] + 1],
+                                                      [self.coordinates[0] - 1, self.coordinates[1] + 1],
+                                                      [self.coordinates[0] - 1, self.coordinates[1]],
+                                                      [self.coordinates[0] - 1, self.coordinates[1] - 1],
+                                                      [self.coordinates[0], self.coordinates[1] - 1],
+                                                      [self.coordinates[0] + 1, self.coordinates[1] - 1]])
 
         for field in field_objs:
             append = True
@@ -394,6 +423,7 @@ class King(Figure):
                             append = False
                     else:
                         if field.coordinates in figure.moveable_fields:
+                            print(figure.id)
                             append = False
 
             if field.has_figure():
@@ -403,6 +433,7 @@ class King(Figure):
                 fields.append(field.coordinates)
 
         self.moveable_fields = fields
+
 
     def in_check(self):
         for figure in self.board.figures:
@@ -495,13 +526,15 @@ class Queen(Figure):
                 y_counter = -1
                 x_counter = 1
 
-            for i in range(9):
+            for i in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             fields.append(field.coordinates)
-                            break
+
+                        break
+
                     else:
                         fields.append(field.coordinates)
                         if y_counter != 0:
@@ -514,6 +547,12 @@ class Queen(Figure):
                                 x_counter += 1
                             else:
                                 x_counter -= 1
+
+
+        if self.id == 22:
+            print(fields)
+
+        print("------")
 
         self.moveable_fields = fields
 
@@ -572,7 +611,6 @@ font = pygame.font.SysFont("Comic Sans MS", 20)
 pygame.display.set_caption("Chess")
 
 clock = pygame.time.Clock()
-
 
 def main():
     game = Game()
