@@ -197,6 +197,9 @@ class Board():
                     if x == 0 or x == 7:
                         figure = Rook(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
+                    elif x == 1 or x == 6:
+                        figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
                     elif x == 3:
                         figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
@@ -320,7 +323,7 @@ class Figure():
 
     def draw(self):
         if self.player == 1:
-            pygame.draw.rect(screen, (255, 0, 0), (self.win_pos_x, self.win_pos_y, 50, 50))
+            pygame.draw.rect(screen, (255, 0, 0), (self.win_pos_x, self.win_pos_y, self.board.field_size / 2, self.board.field_size / 2))
         else:
             pygame.draw.rect(screen, (0, 255, 0), (self.win_pos_x, self.win_pos_y, 50, 50))
 
@@ -434,10 +437,6 @@ class King(Figure):
         if self.moveable_fields == [] and self.in_check():
             return True
 
-
-
-
-
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
@@ -478,6 +477,31 @@ class Rook(Figure):
                                 x_counter += 1
                             else:
                                 x_counter -= 1
+
+        self.moveable_fields = fields
+
+class Knight(Figure):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+    def set_moveable_fields(self):
+        fields = []
+
+        field_objs = self.board.get_fields_by_coords([[self.coordinates[0] + 2, self.coordinates[1] + 1],
+                                                      [self.coordinates[0] + 2, self.coordinates[1] - 1],
+                                                      [self.coordinates[0] + 1, self.coordinates[1] + 2],
+                                                      [self.coordinates[0] + 1, self.coordinates[1] - 2],
+                                                      [self.coordinates[0] - 1, self.coordinates[1] + 2],
+                                                      [self.coordinates[0] - 1, self.coordinates[1] - 2],
+                                                      [self.coordinates[0] - 2, self.coordinates[1] + 1],
+                                                      [self.coordinates[0] - 2, self.coordinates[1] - 1],
+                                                      ])
+        for field in field_objs:
+            if field.has_figure():
+                if field.figure.player != self.player:
+                    fields.append(field.coordinates)
+            else:
+                fields.append(field.coordinates)
 
         self.moveable_fields = fields
 
@@ -585,7 +609,7 @@ class Button():
 
 pygame.init()
 
-width, height = 800, 800
+width, height = 1000, 800
 
 screen = pygame.display.set_mode([width, height])
 
