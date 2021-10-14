@@ -62,19 +62,8 @@ class Game():
         while True:
             turn = int(self.n.send("get-turn"))
             pos_update = self.n.send("get-pos-update")
-            update_fields = False
             figure_ids = ast.literal_eval(self.n.send("get-figures"))
             #has_won = self.n.send("get-won")
-
-            if pos_update != "200" and pos_update != old_pos_update:
-                old_pos_update = pos_update
-                update_fields = True
-                ids = pos_update.split(",")
-                field = self.board.get_field_by_id(int(ids[1]))
-                figure = self.board.get_figure(int(ids[0]))
-                old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
-                old_field.figure = None
-                field.update_figure(figure)
 
             for figure in self.board.figures:
                 if figure.id not in figure_ids:
@@ -85,7 +74,14 @@ class Game():
                         if field.figure == figure:
                             field.figure = None
 
-            if update_fields:
+            if pos_update != "200" and pos_update != old_pos_update:
+                old_pos_update = pos_update
+                ids = pos_update.split(",")
+                field = self.board.get_field_by_id(int(ids[1]))
+                figure = self.board.get_figure(int(ids[0]))
+                old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
+                old_field.figure = None
+                field.update_figure(figure)
                 self.board.set_all_moveable_fields()
 
             if not self.board.king.is_checkmate():
@@ -109,7 +105,6 @@ class Game():
                                                 if field.coordinates in self.player.selected_field.figure.moveable_fields:
                                                     if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                         break
-
                                                 else:
                                                     break
 
@@ -130,7 +125,6 @@ class Game():
 
             else:
                 self.n.send(str({"has_won": 2 if self.player.id == 1 else 1}))
-
 
             self.board.draw()
             self.handle_quit()
@@ -269,7 +263,7 @@ class Board():
             if not isinstance(figure, King):
                 figure.set_moveable_fields()
 
-        self.king.check_fields()
+        self.king.set_moveable_fields()
 
     def get_field_by_id(self, id):
         for field in self.fields:
@@ -358,11 +352,13 @@ class Pawn(Figure):
 
         if field_tr:
             if field_tr.has_figure():
-                fields.append(field_tr.coordinates)
+                if field_tr.figure.player != self.player:
+                    fields.append(field_tr.coordinates)
             beatable_fields.append(field_tr.coordinates)
         if field_tl:
             if field_tl.has_figure():
-                fields.append(field_tl.coordinates)
+                if field_tl.figure.player != self.player:
+                    fields.append(field_tl.coordinates)
             beatable_fields.append(field_tl.coordinates)
         if field_top:
             if not field_top.has_figure():
@@ -384,27 +380,6 @@ class King(Figure):
     def set_moveable_fields(self):
         fields = []
 
-        fields.append([self.coordinates[0] + 1, self.coordinates[1]])
-        fields.append([self.coordinates[0] + 1, self.coordinates[1] + 1])
-        fields.append([self.coordinates[0], self.coordinates[1] + 1])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1] + 1])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1]])
-        fields.append([self.coordinates[0] - 1, self.coordinates[1] - 1])
-        fields.append([self.coordinates[0], self.coordinates[1] - 1])
-        fields.append([self.coordinates[0] + 1, self.coordinates[1] - 1])
-
-
-        self.moveable_fields = fields
-
-
-    def check_fields(self):
-
-        print("here")
-
-
-        fields = []
-
-
         field_objs = self.board.get_fields_by_coords([[self.coordinates[0] + 1, self.coordinates[1]],
                                                       [self.coordinates[0] + 1, self.coordinates[1] + 1],
                                                       [self.coordinates[0], self.coordinates[1] + 1],
@@ -423,7 +398,6 @@ class King(Figure):
                             append = False
                     else:
                         if field.coordinates in figure.moveable_fields:
-                            print(figure.id)
                             append = False
 
             if field.has_figure():
@@ -433,7 +407,6 @@ class King(Figure):
                 fields.append(field.coordinates)
 
         self.moveable_fields = fields
-
 
     def in_check(self):
         for figure in self.board.figures:
@@ -532,7 +505,6 @@ class Queen(Figure):
                     if field.has_figure():
                         if field.figure.player != self.player:
                             fields.append(field.coordinates)
-
                         break
 
                     else:
@@ -548,14 +520,7 @@ class Queen(Figure):
                             else:
                                 x_counter -= 1
 
-
-        if self.id == 22:
-            print(fields)
-
-        print("------")
-
         self.moveable_fields = fields
-
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
