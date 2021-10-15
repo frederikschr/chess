@@ -93,28 +93,24 @@ class Game():
                                 if self.player.selected_field:
                                     if field != self.player.selected_field:
                                         if self.player.id == turn:
-                                            if not self.board.king.in_check():
-                                                if field.has_figure():
-                                                    if field.figure in self.player.figures:
-                                                        break
-                                                    else:
-                                                        if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                                            if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                                                if not self.board.king.in_check():
+                                                    if field.has_figure():
+                                                        if field.figure in self.player.figures:
+                                                            break
+                                                        else:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
-
-                                            else:
-                                                if field.coordinates in self.player.selected_field.figure.moveable_fields:
+                                                else:
                                                     if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
                                                         if not self.board.king.can_move_between(self.player.selected_field.figure):
                                                             if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                                 break
-
                                                     elif self.board.king.can_move_between(self.player.selected_field.figure):
                                                         pass
-
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
-                                                else:
-                                                    break
+                                            else:
+                                                break
 
                                             self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
                                             self.n.send("change-turn")
@@ -481,7 +477,6 @@ class Rook(Figure):
                             fields.append(field.coordinates)
                             if isinstance(field.figure, King):
                                 self.board.game.n.send(str({"check-fields": line_fields}))
-
                             break
                     else:
                         line_fields.append(field.coordinates)
