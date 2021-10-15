@@ -210,6 +210,7 @@ class Board():
 
                     elif x == 2 or x == 5:
                         figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+                        
 
                     elif x == 3:
                         figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -247,10 +248,10 @@ class Board():
                 if field.coordinates[1] % 2 == 0:
                     color = (255, 255, 255)
                 else:
-                    color = (0, 0, 0)
+                    color = (133, 94, 66)
             else:
                 if field.coordinates[1] % 2 == 0:
-                    color = (0, 0, 0)
+                    color = (133, 94, 66)
                 else:
                     color = (255, 255, 255)
 
@@ -298,7 +299,6 @@ class Board():
         for field in self.fields:
             if field.coordinates in coords:
                 fields.append(field)
-
         return fields
 
     def get_figure(self, id):
@@ -334,15 +334,9 @@ class Figure():
 
     def draw(self):
         if self.player == 1:
-            pygame.draw.rect(screen, (255, 0, 0), (self.win_pos_x, self.win_pos_y, self.board.field_size / 2, self.board.field_size / 2))
+            screen.blit(self.image_w, self.image_w.get_rect(center=(self.win_pos_x + (self.board.field_size / 2), self.win_pos_y + (self.board.field_size / 2))))
         else:
-            pygame.draw.rect(screen, (0, 255, 0), (self.win_pos_x, self.win_pos_y, 50, 50))
-
-        textsurface = font.render(self.__class__.__name__, None, (255, 255, 255))
-        screen.blit(textsurface, (self.win_pos_x, self.win_pos_y))
-
-    def can_go_to(self, coords):
-        pass
+            screen.blit(self.image_b, self.image_w.get_rect(center=(self.win_pos_x + (self.board.field_size / 2), self.win_pos_y + (self.board.field_size / 2))))
 
     def set_moveable_fields(self):
         raise NotImplementedError("Please Implement this method")
@@ -352,6 +346,9 @@ class Pawn(Figure):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
         self.first_move = True
         self.beatable_fields = []
+
+        self.image_w = pygame.image.load("./assets/pawn_w.png")
+        self.image_b = pygame.image.load("./assets/pawn_b.png")
 
     def set_moveable_fields(self):
         fields = []
@@ -395,6 +392,9 @@ class King(Figure):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
         self.attacker = None
 
+        self.image_w = pygame.image.load("./assets/king_w.png")
+        self.image_b = pygame.image.load("./assets/king_b.png")
+
     def set_moveable_fields(self):
         fields = []
 
@@ -434,7 +434,6 @@ class King(Figure):
                     return True
         return False
 
-
     def get_attacker_beaters(self):
         figures = []
         if self.attacker:
@@ -458,6 +457,9 @@ class King(Figure):
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+        self.image_w = pygame.image.load("./assets/rook_w.png")
+        self.image_b = pygame.image.load("./assets/rook_b.png")
 
     def set_moveable_fields(self):
         fields = []
@@ -506,6 +508,9 @@ class Knight(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
 
+        self.image_w = pygame.image.load("./assets/knight_w.png")
+        self.image_b = pygame.image.load("./assets/knight_b.png")
+
     def set_moveable_fields(self):
         fields = []
 
@@ -530,6 +535,9 @@ class Knight(Figure):
 class Queen(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+        self.image_w = pygame.image.load("./assets/queen_w.png")
+        self.image_b = pygame.image.load("./assets/queen_b.png")
 
     def set_moveable_fields(self):
         fields = []
@@ -595,6 +603,9 @@ class Queen(Figure):
 class Bishop(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+        self.image_w = pygame.image.load("./assets/bishop_w.png")
+        self.image_b = pygame.image.load("./assets/bishop_b.png")
 
     def set_moveable_fields(self):
         fields = []
