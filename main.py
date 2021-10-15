@@ -23,7 +23,7 @@ class Game():
             self.n = Network()
             self.player_id = int(self.n.get_id())
             self.player = Player(self.player_id)
-            self.board = Board(self.player)
+            self.board = Board(self.player, self)
             return True
         except:
             return False
@@ -104,8 +104,13 @@ class Game():
                                             else:
                                                 if field.coordinates in self.player.selected_field.figure.moveable_fields:
                                                     if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
-                                                        if not self.player.selected_field.coordinates == self.board.king.coordinates:
-                                                            break
+                                                        if not self.board.king.can_move_between(self.player.selected_field.figure):
+                                                            if not self.player.selected_field.coordinates == self.board.king.coordinates:
+                                                                break
+
+                                                    elif self.board.king.can_move_between(self.player.selected_field.figure):
+                                                        pass
+
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
                                                 else:
@@ -174,11 +179,12 @@ class Field():
         return self.figure
 
 class Board():
-    def __init__(self, player):
+    def __init__(self, player, game):
         self.fields = []
         self.figures = []
         self.field_size = height / 8
         self.player = player
+        self.game = game
 
         self.king = None
 
@@ -433,9 +439,12 @@ class King(Figure):
 
         return figures
 
-    def get_fields_between(self):
-        fields = []
-
+    def can_move_between(self, figure):
+        check_fields = ast.literal_eval(self.board.game.n.send("get-fields-check"))
+        for field in figure.moveable_fields:
+            if field in check_fields:
+                return True
+        return False
 
 
     def is_checkmate(self):
@@ -463,14 +472,19 @@ class Rook(Figure):
                 y_counter = 0
                 x_counter = -1
 
+            line_fields = []
             for i in range(9):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             fields.append(field.coordinates)
+                            if isinstance(field.figure, King):
+                                self.board.game.n.send(str({"check-fields": line_fields}))
+
                             break
                     else:
+                        line_fields.append(field.coordinates)
                         fields.append(field.coordinates)
                         if y_counter != 0:
                             if y_counter > 0:
