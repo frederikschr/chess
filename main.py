@@ -101,12 +101,18 @@ class Game():
                                                         else:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
                                                 else:
+                                                    check_fields = ast.literal_eval(self.n.send("get-fields-check"))
                                                     if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
-                                                        if not self.board.king.can_move_between(self.player.selected_field.figure):
+                                                        if not self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
                                                             if not self.player.selected_field.coordinates == self.board.king.coordinates:
                                                                 break
-                                                    elif self.board.king.can_move_between(self.player.selected_field.figure):
-                                                        pass
+                                                        else:
+                                                            if not field.coordinates in check_fields:
+                                                                break
+
+                                                    elif self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
+                                                        if not field.coordinates in check_fields:
+                                                            break
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
                                             else:
@@ -201,6 +207,9 @@ class Board():
 
                     elif x == 1 or x == 6:
                         figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 2 or x == 5:
+                        figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
                     elif x == 3:
                         figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -435,17 +444,16 @@ class King(Figure):
 
         return figures
 
-    def can_move_between(self, figure):
-        check_fields = ast.literal_eval(self.board.game.n.send("get-fields-check"))
+    def can_move_between(self, figure, check_fields):
         for field in figure.moveable_fields:
             if field in check_fields:
                 return True
         return False
 
-
     def is_checkmate(self):
-        if self.moveable_fields == [] and self.in_check():
-            return True
+        return False
+        #if self.moveable_fields == [] and self.in_check():
+            #return True
 
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -557,15 +565,19 @@ class Queen(Figure):
                 y_counter = -1
                 x_counter = 1
 
+            line_fields = []
             for i in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             fields.append(field.coordinates)
+                            if isinstance(field.figure, King):
+                                self.board.game.n.send(str({"check-fields": line_fields}))
                         break
 
                     else:
+                        line_fields.append(field.coordinates)
                         fields.append(field.coordinates)
                         if y_counter != 0:
                             if y_counter > 0:
@@ -577,6 +589,55 @@ class Queen(Figure):
                                 x_counter += 1
                             else:
                                 x_counter -= 1
+
+        self.moveable_fields = fields
+
+class Bishop(Figure):
+    def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
+        super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+    def set_moveable_fields(self):
+        fields = []
+        for i in range(4):
+            if i == 0:
+                y_counter = 1
+                x_counter = 1
+
+            elif i == 1:
+                y_counter = -1
+                x_counter = 1
+
+            elif i == 2:
+                y_counter = -1
+                x_counter = -1
+
+            else:
+                y_counter = 1
+                x_counter = -1
+
+            line_fields = []
+            for i in range(8):
+                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+                if field:
+                    if field.has_figure():
+                        if field.figure.player != self.player:
+                            fields.append(field.coordinates)
+                            if isinstance(field.figure, King):
+                                self.board.game.n.send(str({"check-fields": line_fields}))
+                        break
+
+                    else:
+                        line_fields.append(field.coordinates)
+                        fields.append(field.coordinates)
+                        if y_counter > 0:
+                            y_counter += 1
+                        else:
+                            y_counter -= 1
+
+                        if x_counter > 0:
+                            x_counter += 1
+                        else:
+                            x_counter -= 1
 
         self.moveable_fields = fields
 
