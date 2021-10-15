@@ -27,7 +27,7 @@ def threaded_client(conn, id):
     global turn, pos_update, connections, figure_ids, has_won, check_fields
     conn.send(str.encode(str(id)))
     while True:
-        #try:
+        try:
             data = conn.recv(2048).decode()
 
             #Set
@@ -52,14 +52,11 @@ def threaded_client(conn, id):
 
             elif "has_won" in data:
                 data = ast.literal_eval(data)
-                print(data)
                 has_won = data["has_won"]
 
             elif "check-fields" in data:
                 data = ast.literal_eval(data)
                 check_fields = data["check-fields"]
-
-                print(type(str(check_fields)))
 
             #Get
             elif data == "get-turn":
@@ -84,23 +81,17 @@ def threaded_client(conn, id):
                 continue
 
             elif data == "get-fields-check":
-
-                print("here")
-
                 conn.send(str.encode(str(check_fields)))
                 continue
-
-            else:
-                print(data)
 
             conn.send(str.encode("200"))
 
             if not data:
                 break
 
-        #except Exception as e:
-            #print(e)
-            #break
+        except Exception as e:
+            print(e)
+            break
 
     print("Lost connection")
     conn.close()
