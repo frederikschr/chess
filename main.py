@@ -433,6 +433,11 @@ class King(Figure):
 
         return figures
 
+    def get_fields_between(self):
+        fields = []
+
+
+
     def is_checkmate(self):
         if self.moveable_fields == [] and self.in_check():
             return True
