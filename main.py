@@ -3,11 +3,24 @@ import sys
 from network import Network
 import ast
 
+"""
+
+                    elif x == 1 or x == 6:
+                        figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 2 or x == 5:
+                        figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 3:
+                        figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+
+"""
+
+
 
 """
 To-Do:
-
--Rochade(lang / kurz)
 -Umwandlung
 -Checkmate update
 -Menu 
@@ -70,11 +83,11 @@ class Game():
 
     def game(self):
         self.board.create()
-        old_pos_update = None
+        old_pos_updates = None
         self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
         while True:
             turn = int(self.n.send("get-turn"))
-            pos_update = self.n.send("get-pos-update")
+            pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
             figure_ids = ast.literal_eval(self.n.send("get-figures"))
             #has_won = self.n.send("get-won")
 
@@ -87,14 +100,18 @@ class Game():
                         if field.figure == figure:
                             field.figure = None
 
-            if pos_update != "200" and pos_update != old_pos_update:
-                old_pos_update = pos_update
-                ids = pos_update.split(",")
-                field = self.board.get_field_by_id(int(ids[1]))
-                figure = self.board.get_figure(int(ids[0]))
-                old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
-                old_field.figure = None
-                field.update_figure(figure)
+            if pos_updates != {} and pos_updates != old_pos_updates:
+
+                print(pos_updates)
+
+                old_pos_updates = pos_updates
+                for pos_update in pos_updates:
+                    field = self.board.get_field_by_id(int(pos_update["field_id"]))
+                    figure = self.board.get_figure(int(pos_update["move-figure"]))
+                    old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
+                    old_field.figure = None
+                    field.update_figure(figure)
+
                 self.board.set_all_moveable_fields()
 
             if not self.board.king.is_checkmate():
@@ -106,14 +123,33 @@ class Game():
                                 if self.player.selected_field:
                                     if field != self.player.selected_field:
                                         if self.player.id == turn:
-                                            if field.coordinates in self.player.selected_field.figure.moveable_fields:
+
+
+
+                                            if field.coordinates in self.player.selected_field.figure.moveable_fields and not self.player.selected_field.figure.blocks_check:
+
+                                                rochade = False
                                                 if not self.board.king.in_check():
                                                     if field.has_figure():
                                                         if field.figure in self.player.figures:
+                                                            if isinstance(self.player.selected_field.figure, King):
+                                                                for figure in self.board.king.check_rochade():
+                                                                    if figure == field.figure:
+                                                                        rook = figure
 
-                                                            #rochade
+                                                                if rook.coordinates[1] > self.board.king.coordinates[1]:
+                                                                    new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 2])
+                                                                    new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 1])
 
-                                                            break
+                                                                else:
+                                                                    new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 2])
+                                                                    new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 1])
+
+                                                                rochade = True
+
+                                                            else:
+                                                                break
+
                                                         else:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
                                                 else:
@@ -126,6 +162,9 @@ class Game():
                                                             if not field.coordinates in check_fields:
                                                                 break
 
+                                                            else:
+                                                                self.player.selected_field.figure.blocks_check = True
+
                                                     elif self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
                                                         if not field.coordinates in check_fields:
                                                             break
@@ -134,7 +173,17 @@ class Game():
                                             else:
                                                 break
 
-                                            self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
+                                            if rochade:
+
+                                                self.n.send(str({"move-figures": [{"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id},
+                                                                                  {"move-figure": field.figure.id, "field_id": new_field_rook.id}]}))
+
+                                                #self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id}))
+                                                #self.n.send(str({"move-figure": field.figure.id, "field_id": new_field_rook.id}))
+
+                                            else:
+                                                self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
+
                                             self.n.send("change-turn")
                                             self.player.selected_field.figure = None
                                             self.player.selected_field.is_highlighted = False
@@ -183,7 +232,7 @@ class Field():
         self.figure.coordinates[0] = self.coordinates[0]
         self.figure.coordinates[1] = self.coordinates[1]
 
-        if isinstance(figure, Pawn):
+        if isinstance(figure, (Pawn, King, Rook)):
             if figure.first_move:
                 figure.first_move = False
 
@@ -220,15 +269,6 @@ class Board():
                 elif y == 0 or y == 7:
                     if x == 0 or x == 7:
                         figure = Rook(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-                    elif x == 1 or x == 6:
-                        figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-                    elif x == 2 or x == 5:
-                        figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-                    elif x == 3:
-                        figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
                     elif x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -348,6 +388,8 @@ class Figure():
         self.moveable_fields = []
         self.beatable_fields = []
 
+        self.blocks_check = False
+
     def draw(self):
         if self.player == 1:
             screen.blit(self.image_w, self.image_w.get_rect(center=(self.win_pos_x + (self.board.field_size / 2), self.win_pos_y + (self.board.field_size / 2))))
@@ -406,6 +448,7 @@ class King(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
         self.attacker = None
+        self.first_move = True
 
         self.image_w = pygame.image.load("./assets/king_w.png")
         self.image_b = pygame.image.load("./assets/king_b.png")
@@ -432,6 +475,11 @@ class King(Figure):
                     else:
                         if field.coordinates in figure.beatable_fields:
                             append = False
+
+                else:
+                    if isinstance(figure, Rook):
+                        if figure in self.check_rochade():
+                            fields.append(figure.coordinates)
 
             if field.has_figure():
                 if field.figure.player == self.player:
@@ -469,9 +517,49 @@ class King(Figure):
         #if self.moveable_fields == [] and self.in_check():
             #return True
 
+    def check_rochade(self):
+        rooks = []
+        if self.first_move and not self.in_check():
+            for figure in self.board.player.figures:
+                if isinstance(figure, Rook):
+                    if figure.first_move:
+                        append = True
+                        for i in range(3):
+                            i += 1
+                            if figure.coordinates[1] < self.coordinates[1]:
+                                field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1] + i])
+                                if field.has_figure():
+                                    if not field.figure == self:
+                                        append = False
+
+                                for f in self.board.figures:
+                                    if f.player != self.player:
+                                        if field.coordinates in f.moveable_fields:
+                                            append = False
+
+                            else:
+                                field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1] - i])
+
+                                if field.has_figure():
+                                    if not field.figure == self:
+                                        append = False
+
+                                for f in self.board.figures:
+                                    if f.player != self.player:
+                                        if field.coordinates in f.moveable_fields:
+                                            append = False
+                                            break
+
+                        if append:
+                            rooks.append(figure)
+
+        return rooks
+
 class Rook(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
+
+        self.first_move = True
 
         self.image_w = pygame.image.load("./assets/rook_w.png")
         self.image_b = pygame.image.load("./assets/rook_b.png")
@@ -580,23 +668,18 @@ class Queen(Figure):
             elif i == 2:
                 y_counter = 0
                 x_counter = 1
-
             elif i == 3:
                 y_counter = 0
                 x_counter = -1
-
             elif i == 4:
                 y_counter = -1
                 x_counter = -1
-
             elif i == 5:
                 y_counter = 1
                 x_counter = 1
-
             elif i == 6:
                 y_counter = 1
                 x_counter = -1
-
             else:
                 y_counter = -1
                 x_counter = 1
@@ -654,15 +737,12 @@ class Bishop(Figure):
             if i == 0:
                 y_counter = 1
                 x_counter = 1
-
             elif i == 1:
                 y_counter = -1
                 x_counter = 1
-
             elif i == 2:
                 y_counter = -1
                 x_counter = -1
-
             else:
                 y_counter = 1
                 x_counter = -1

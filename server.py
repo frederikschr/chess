@@ -18,16 +18,16 @@ print("Waiting for a connection, Server Started")
 connections = 0
 idCount = 0
 turn = 1
-pos_update = {}
+pos_updates = []
 figure_ids = []
 check_fields = []
 has_won = None
 
 def threaded_client(conn, id):
-    global turn, pos_update, connections, figure_ids, has_won, check_fields
+    global turn, pos_updates, connections, figure_ids, has_won, check_fields
     conn.send(str.encode(str(id)))
     while True:
-        try:
+        #try:
             data = conn.recv(2048).decode()
 
             #Set
@@ -42,9 +42,16 @@ def threaded_client(conn, id):
                 figure_id = data["remove-figure"]
                 figure_ids.remove(figure_id)
 
+            elif "move-figures" in data:
+                data = ast.literal_eval(data)
+                pos_updates = []
+                for update in data["move-figures"]:
+                    pos_updates.append(update)
+
             elif "move-figure" in data:
                 data = ast.literal_eval(data)
-                pos_update = data
+                pos_updates = []
+                pos_updates.append(data)
 
             elif "set-figures" in data:
                 data = ast.literal_eval(data)
@@ -68,9 +75,13 @@ def threaded_client(conn, id):
                 continue
 
             elif data == "get-pos-update":
-                if pos_update:
-                    conn.send(str.encode(f"{pos_update['move-figure']}, {pos_update['field_id']}"))
-                    continue
+                if pos_updates:
+                    conn.send(str.encode(str(pos_updates)))
+                else:
+                    conn.send(str.encode(str({})))
+
+                continue
+
 
             elif data == "get-figures":
                 conn.send(str.encode(str(figure_ids)))
@@ -89,9 +100,9 @@ def threaded_client(conn, id):
             if not data:
                 break
 
-        except Exception as e:
-            print(e)
-            break
+        #except Exception as e:
+           # print(e)
+           # break
 
     print("Lost connection")
     conn.close()
