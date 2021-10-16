@@ -4,22 +4,6 @@ from network import Network
 import ast
 
 """
-
-                    elif x == 1 or x == 6:
-                        figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-                    elif x == 2 or x == 5:
-                        figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-                    elif x == 3:
-                        figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-
-
-"""
-
-
-
-"""
 To-Do:
 -Umwandlung
 -Checkmate update
@@ -123,11 +107,7 @@ class Game():
                                 if self.player.selected_field:
                                     if field != self.player.selected_field:
                                         if self.player.id == turn:
-
-
-
                                             if field.coordinates in self.player.selected_field.figure.moveable_fields and not self.player.selected_field.figure.blocks_check:
-
                                                 rochade = False
                                                 if not self.board.king.in_check():
                                                     if field.has_figure():
@@ -136,20 +116,15 @@ class Game():
                                                                 for figure in self.board.king.check_rochade():
                                                                     if figure == field.figure:
                                                                         rook = figure
-
                                                                 if rook.coordinates[1] > self.board.king.coordinates[1]:
                                                                     new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 2])
                                                                     new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 1])
-
                                                                 else:
                                                                     new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 2])
                                                                     new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 1])
-
                                                                 rochade = True
-
                                                             else:
                                                                 break
-
                                                         else:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
                                                 else:
@@ -174,12 +149,8 @@ class Game():
                                                 break
 
                                             if rochade:
-
                                                 self.n.send(str({"move-figures": [{"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id},
                                                                                   {"move-figure": field.figure.id, "field_id": new_field_rook.id}]}))
-
-                                                #self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id}))
-                                                #self.n.send(str({"move-figure": field.figure.id, "field_id": new_field_rook.id}))
 
                                             else:
                                                 self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
@@ -269,6 +240,15 @@ class Board():
                 elif y == 0 or y == 7:
                     if x == 0 or x == 7:
                         figure = Rook(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 1 or x == 6:
+                        figure = Knight(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 2 or x == 5:
+                        figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
+
+                    elif x == 3:
+                        figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
                     elif x == 4:
                         figure = King(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
