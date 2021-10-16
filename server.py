@@ -27,7 +27,7 @@ def threaded_client(conn, id):
     global turn, pos_updates, connections, figure_ids, has_won, check_fields
     conn.send(str.encode(str(id)))
     while True:
-        #try:
+        try:
             data = conn.recv(2048).decode()
 
             #Set
@@ -79,9 +79,7 @@ def threaded_client(conn, id):
                     conn.send(str.encode(str(pos_updates)))
                 else:
                     conn.send(str.encode(str({})))
-
                 continue
-
 
             elif data == "get-figures":
                 conn.send(str.encode(str(figure_ids)))
@@ -100,9 +98,9 @@ def threaded_client(conn, id):
             if not data:
                 break
 
-        #except Exception as e:
-           # print(e)
-           # break
+        except Exception as e:
+            print(e)
+            break
 
     print("Lost connection")
     conn.close()

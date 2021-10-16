@@ -85,9 +85,6 @@ class Game():
                             field.figure = None
 
             if pos_updates != {} and pos_updates != old_pos_updates:
-
-                print(pos_updates)
-
                 old_pos_updates = pos_updates
                 for pos_update in pos_updates:
                     field = self.board.get_field_by_id(int(pos_update["field_id"]))
@@ -95,7 +92,6 @@ class Game():
                     old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
                     old_field.figure = None
                     field.update_figure(figure)
-
                 self.board.set_all_moveable_fields()
 
             if not self.board.king.is_checkmate():
@@ -136,7 +132,6 @@ class Game():
                                                         else:
                                                             if not field.coordinates in check_fields:
                                                                 break
-
                                                             else:
                                                                 self.player.selected_field.figure.blocks_check = True
 
@@ -151,7 +146,6 @@ class Game():
                                             if rochade:
                                                 self.n.send(str({"move-figures": [{"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id},
                                                                                   {"move-figure": field.figure.id, "field_id": new_field_rook.id}]}))
-
                                             else:
                                                 self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
 
