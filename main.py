@@ -3,6 +3,19 @@ import sys
 from network import Network
 import ast
 
+
+"""
+To-Do:
+
+-Rochade(lang / kurz)
+-Umwandlung
+-Checkmate update
+-Menu 
+-Multiple games 
+-Sounds
+"""
+
+
 class Game():
     def __init__(self):
         self.FPS = 60
@@ -97,6 +110,9 @@ class Game():
                                                 if not self.board.king.in_check():
                                                     if field.has_figure():
                                                         if field.figure in self.player.figures:
+
+                                                            #rochade
+
                                                             break
                                                         else:
                                                             self.n.send(str({"remove-figure": field.figure.id}))
@@ -210,7 +226,6 @@ class Board():
 
                     elif x == 2 or x == 5:
                         figure = Bishop(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
-                        
 
                     elif x == 3:
                         figure = Queen(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -331,6 +346,7 @@ class Figure():
         self.player = player
 
         self.moveable_fields = []
+        self.beatable_fields = []
 
     def draw(self):
         if self.player == 1:
@@ -345,7 +361,6 @@ class Pawn(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
         super().__init__(game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board)
         self.first_move = True
-        self.beatable_fields = []
 
         self.image_w = pygame.image.load("./assets/pawn_w.png")
         self.image_b = pygame.image.load("./assets/pawn_b.png")
@@ -411,11 +426,11 @@ class King(Figure):
             append = True
             for figure in self.board.figures:
                 if figure.player != self.player:
-                    if isinstance(figure, Pawn):
-                        if field.coordinates in figure.beatable_fields:
+                    if not isinstance(figure, Pawn):
+                        if field.coordinates in figure.moveable_fields or field.coordinates in figure.beatable_fields:
                             append = False
                     else:
-                        if field.coordinates in figure.moveable_fields:
+                        if field.coordinates in figure.beatable_fields:
                             append = False
 
             if field.has_figure():
@@ -463,6 +478,7 @@ class Rook(Figure):
 
     def set_moveable_fields(self):
         fields = []
+        beatable_fields = []
 
         for i in range(4):
             if i == 0:
@@ -479,30 +495,41 @@ class Rook(Figure):
                 x_counter = -1
 
             line_fields = []
-            for i in range(9):
+            append = True
+            for x in range(9):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
-                            fields.append(field.coordinates)
+                            if append:
+                                fields.append(field.coordinates)
                             if isinstance(field.figure, King):
+                                append = False
                                 self.board.game.n.send(str({"check-fields": line_fields}))
+                            else:
+                                break
+                        else:
                             break
                     else:
-                        line_fields.append(field.coordinates)
-                        fields.append(field.coordinates)
-                        if y_counter != 0:
-                            if y_counter > 0:
-                                y_counter += 1
-                            else:
-                                y_counter -= 1
+                        if append:
+                            line_fields.append(field.coordinates)
+                            fields.append(field.coordinates)
                         else:
-                            if x_counter > 0:
-                                x_counter += 1
-                            else:
-                                x_counter -= 1
+                            beatable_fields.append(field.coordinates)
+
+                    if y_counter != 0:
+                        if y_counter > 0:
+                            y_counter += 1
+                        else:
+                            y_counter -= 1
+                    else:
+                        if x_counter > 0:
+                            x_counter += 1
+                        else:
+                            x_counter -= 1
 
         self.moveable_fields = fields
+        self.beatable_fields = beatable_fields
 
 class Knight(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -541,6 +568,7 @@ class Queen(Figure):
 
     def set_moveable_fields(self):
         fields = []
+        beatable_fields = []
 
         for i in range(8):
             if i == 0:
@@ -574,31 +602,42 @@ class Queen(Figure):
                 x_counter = 1
 
             line_fields = []
+            append = True
             for i in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
-                            fields.append(field.coordinates)
+                            if append:
+                                fields.append(field.coordinates)
                             if isinstance(field.figure, King):
+                                append = False
                                 self.board.game.n.send(str({"check-fields": line_fields}))
-                        break
+                            else:
+                                break
+                        else:
+                            break
 
                     else:
-                        line_fields.append(field.coordinates)
-                        fields.append(field.coordinates)
-                        if y_counter != 0:
-                            if y_counter > 0:
-                                y_counter += 1
-                            else:
-                                y_counter -= 1
-                        if x_counter != 0:
-                            if x_counter > 0:
-                                x_counter += 1
-                            else:
-                                x_counter -= 1
+                        if append:
+                            line_fields.append(field.coordinates)
+                            fields.append(field.coordinates)
+                        else:
+                            beatable_fields.append(field.coordinates)
+
+                    if y_counter != 0:
+                        if y_counter > 0:
+                            y_counter += 1
+                        else:
+                            y_counter -= 1
+                    if x_counter != 0:
+                        if x_counter > 0:
+                            x_counter += 1
+                        else:
+                            x_counter -= 1
 
         self.moveable_fields = fields
+        self.beatable_fields = beatable_fields
 
 class Bishop(Figure):
     def __init__(self, game_coord_y, game_coord_x, win_pos_y, win_pos_x, id, player, board):
@@ -609,6 +648,8 @@ class Bishop(Figure):
 
     def set_moveable_fields(self):
         fields = []
+        beatable_fields = []
+
         for i in range(4):
             if i == 0:
                 y_counter = 1
@@ -627,30 +668,40 @@ class Bishop(Figure):
                 x_counter = -1
 
             line_fields = []
-            for i in range(8):
-                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+            append = True
+            for x in range(8):
+                field = self.board.get_field_by_coords( [self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
-                            fields.append(field.coordinates)
+                            if append:
+                                fields.append(field.coordinates)
                             if isinstance(field.figure, King):
+                                append = False
                                 self.board.game.n.send(str({"check-fields": line_fields}))
-                        break
-
+                            else:
+                                break
+                        else:
+                            break
                     else:
-                        line_fields.append(field.coordinates)
-                        fields.append(field.coordinates)
-                        if y_counter > 0:
-                            y_counter += 1
+                        if append:
+                            line_fields.append(field.coordinates)
+                            fields.append(field.coordinates)
                         else:
-                            y_counter -= 1
+                            beatable_fields.append(field.coordinates)
 
-                        if x_counter > 0:
-                            x_counter += 1
-                        else:
-                            x_counter -= 1
+                    if y_counter > 0:
+                        y_counter += 1
+                    else:
+                        y_counter -= 1
+
+                    if x_counter > 0:
+                        x_counter += 1
+                    else:
+                        x_counter -= 1
 
         self.moveable_fields = fields
+        self.beatable_fields = beatable_fields
 
 class Button():
     def __init__(self, color, x, y, width, height, text=None, text_size=None):
