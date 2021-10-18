@@ -117,7 +117,7 @@ def threaded_client(conn, id):
 
             #Get
             elif data == "get-games":
-                games_dict = [{"game_id": game.id, "host": game.first_player} for game in games]
+                games_dict = [{"game_id": game.id, "host": game.first_player_name} for game in games]
                 conn.send(str.encode(str(games_dict)))
                 continue
 

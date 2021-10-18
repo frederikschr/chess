@@ -5,10 +5,10 @@ import ast
 
 """
 To-Do:
+-Getting events only one time and saving them in a variable
 -Umwandlung
 -Checkmate update
 -Menu 
--Multiple games 
 -Sounds
 """
 
@@ -17,6 +17,12 @@ class Game():
         self.stage = 1
         self.FPS = 60
         self.is_connected = False
+        self.username = None
+
+        self.selected = False
+        self.name_text = "Enter Name"
+
+        self.events = None
 
     def run(self):
         while True:
@@ -35,6 +41,7 @@ class Game():
             else:
                 pass
 
+            self.events = pygame.event.get()
             self.handle_quit()
             clock.tick(self.FPS)
             pygame.display.update()
@@ -56,19 +63,48 @@ class Game():
 
     def startscreen(self):
         font = pygame.font.SysFont("Comic Sans MS", 40)
+        small_font = pygame.font.SysFont("Comic Sans MS", 20)
         screen.fill((133, 94, 66))
-        connect_btn = Button((255, 255, 255), width / 2 - 50, height / 2, 100, 100, text="Play")
+        connect_btn = Button((255, 255, 255), width / 2 - 50, height / 1.5, 100, 100, text="Play")
+        name_button = Button((255, 255, 255), width / 2 - 100, height / 2, 200, 50)
+
+        if name_button.isClicked(pygame.mouse.get_pos()):
+            if not self.selected:
+                self.selected = True
+                self.name_text = ""
+            else:
+                self.selected = False
+                self.name_text = "Enter Name"
+
+        if self.selected:
+            for event in self.events:
+                if event.type == pygame.KEYDOWN:
+                    pygame.key.set_repeat(1, 100)
+                    if event.key == pygame.K_RETURN:
+                        self.selected = False
+                        print("here")
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.name_text = self.name_text[:-1]
+                    else:
+                        self.name_text += event.unicode
+
+
+        pygame.draw.line(screen, (255, 255, 255), (width / 2 - 100, height / 2 + 50), (width / 2 + 100, height / 2 + 50), 3)
 
         if connect_btn.isClicked(pygame.mouse.get_pos()):
             if self.connect():
-                self.n.send(str({"set-name": self.player.id}))
+                self.n.send(str({"set-name": self.name_text}))
+                self.username = self.name_text
                 self.is_connected = True
                 self.stage = 2
 
         connect_btn.draw(border=3)
 
         title = font.render("Chess", None, (255, 255, 255))
+        name = small_font.render(str(self.name_text), None, (255, 255, 255))
         screen.blit(title, (width / 2 - title.get_width() / 2, height / 3))
+        screen.blit(name, (width / 2 - name.get_width() / 2, height / 2))
+
 
     def gameslist(self):
         font = pygame.font.SysFont("Comic Sans MS", 40)
@@ -87,8 +123,9 @@ class Game():
 
         for game in games:
             game_text = font.render(f"{game['game_id']}...{game['host']}", None, (255, 255, 255))
-            game_join_btn = Button((255, 255, 255), width / 2 + 150, y_count - 25, 50, 50, text="Join", data=game["game_id"])
-            game_join_buttons.append(game_join_btn)
+            if not game["host"] == self.username:
+                game_join_btn = Button((255, 255, 255), width / 2 + 150, y_count, 50, 50, text="Join", data=game["game_id"])
+                game_join_buttons.append(game_join_btn)
             screen.blit(game_text, (width / 2 - game_text.get_width(), y_count))
             y_count += 100
 
