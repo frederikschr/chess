@@ -12,15 +12,32 @@ To-Do:
 -Sounds
 """
 
-
 class Game():
     def __init__(self):
+        self.stage = 1
         self.FPS = 60
-        self.over = False
+        self.is_connected = False
 
     def run(self):
-        self.menu()
-        self.game()
+        while True:
+            if self.stage == 1:
+                self.startscreen()
+
+            elif self.stage == 2:
+                self.gameslist()
+
+            elif self.stage == 3:
+                self.create_board()
+
+            elif self.stage == 4:
+                self.game()
+
+            else:
+                pass
+
+            self.handle_quit()
+            clock.tick(self.FPS)
+            pygame.display.update()
 
     def handle_quit(self):
         for event in pygame.event.get():
@@ -32,144 +49,174 @@ class Game():
         try:
             self.n = Network()
             self.player_id = int(self.n.get_id())
+
+            print(self.player_id)
+
             self.player = Player(self.player_id)
-            self.board = Board(self.player, self)
             return True
         except:
             return False
 
-    def menu(self):
-        connected = False
-        connect_btn = Button((255, 0, 0), width / 2 - 50, height / 1.5, 100, 100, text="Play")
-        while True:
-            if connect_btn.isClicked(pygame.mouse.get_pos()):
-                if self.connect():
-                    connected = True
-                    connections = int(self.n.send("get-connections"))
-                    if connections < 2:
-                        info = font.render("Waiting for second player...", None, (255, 0, 0))
-                        screen.blit(info, (width / 2 - info.get_width() / 2, height / 2))
-                    else:
-                        break
+    def startscreen(self):
+        font = pygame.font.SysFont("Comic Sans MS", 40)
+        screen.fill((133, 94, 66))
+        connect_btn = Button((255, 255, 255), width / 2 - 50, height / 1.5, 100, 100, text="Play")
 
-            if connected:
-                connections = int(self.n.send("get-connections"))
-                if connections != 1:
-                    break
-            else:
-                connect_btn.draw()
+        if connect_btn.isClicked(pygame.mouse.get_pos()):
+            if self.connect():
+                self.n.send(str({"set-name": self.player.id}))
+                self.is_connected = True
+                self.stage = 2
 
-            title = font.render("Chess", None, (255, 0, 0))
-            screen.blit(title, (width / 2 - title.get_width() / 2, height / 3))
-            self.handle_quit()
-            clock.tick(self.FPS)
-            pygame.display.update()
+        connect_btn.draw(border=3)
+
+        title = font.render("Chess", None, (255, 255, 255))
+        screen.blit(title, (width / 2 - title.get_width() / 2, height / 3))
+
+    def gameslist(self):
+        font = pygame.font.SysFont("Comic Sans MS", 40)
+        screen.fill((133, 94, 66))
+        create_game_btn = Button((255, 255, 255), width / 3 - 50, height / 3, 100, 100, text="Create")
+
+        connections = int(self.n.send("get-connections"))
+        games = ast.literal_eval(self.n.send("get-games"))
+
+        if create_game_btn.isClicked(pygame.mouse.get_pos()):
+            self.n.send("create-game")
+
+        y_count = height / 2
+
+        game_join_buttons = []
+
+        for game in games:
+            game_text = font.render(f"{game['game_id']}...{game['host']}", None, (255, 255, 255))
+            game_join_btn = Button((255, 255, 255), width / 2 + 150, y_count - 25, 50, 50, text="Join", data=game["game_id"])
+            game_join_buttons.append(game_join_btn)
+            screen.blit(game_text, (width / 2 - game_text.get_width(), y_count))
+            y_count += 100
+
+        for join_btn in game_join_buttons:
+            join_btn.draw(border=3)
+            if join_btn.isClicked(pygame.mouse.get_pos()):
+                self.n.send(str({"join-game": join_btn.data}))
+
+        create_game_btn.draw(border=3)
+
+        if ast.literal_eval(self.n.send("get-game-start")) == True:
+            self.stage = 3
+
+        games_text = font.render("Games", None, (255, 255, 255))
+        conn_text = font.render(str(connections), None, (255, 255, 255))
+
+        screen.blit(games_text, (width / 2 - games_text.get_width() / 2, height / 3))
+        screen.blit(conn_text, (width - (conn_text.get_width() * 2), height - 50))
+
+    def create_board(self):
+        self.board = Board(self.player, ast.literal_eval(self.n.send("get-players")), self)
+        self.board.create()
+        self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
+        self.old_pos_updates = None
+
+        self.stage = 4
 
     def game(self):
-        self.board.create()
-        old_pos_updates = None
-        self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
-        while True:
-            turn = int(self.n.send("get-turn"))
-            pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
-            figure_ids = ast.literal_eval(self.n.send("get-figures"))
-            #has_won = self.n.send("get-won")
+        turn = int(self.n.send("get-turn"))
+        pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
+        figure_ids = ast.literal_eval(self.n.send("get-figures"))
+        #has_won = self.n.send("get-won")
 
-            for figure in self.board.figures:
-                if figure.id not in figure_ids:
-                    self.board.figures.remove(figure)
-                    if figure in self.player.figures:
-                        self.player.figures.remove(figure)
+        for figure in self.board.figures:
+            if figure.id not in figure_ids:
+                self.board.figures.remove(figure)
+                if figure in self.player.figures:
+                    self.player.figures.remove(figure)
+                for field in self.board.fields:
+                    if field.figure == figure:
+                        field.figure = None
+
+        if pos_updates != {} and pos_updates != self.old_pos_updates:
+            self.old_pos_updates = pos_updates
+            for pos_update in pos_updates:
+                field = self.board.get_field_by_id(int(pos_update["field_id"]))
+                figure = self.board.get_figure(int(pos_update["move-figure"]))
+                old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
+                old_field.figure = None
+                field.update_figure(figure)
+            self.board.set_all_moveable_fields()
+
+        if not self.board.king.is_checkmate():
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
                     for field in self.board.fields:
-                        if field.figure == figure:
-                            field.figure = None
-
-            if pos_updates != {} and pos_updates != old_pos_updates:
-                old_pos_updates = pos_updates
-                for pos_update in pos_updates:
-                    field = self.board.get_field_by_id(int(pos_update["field_id"]))
-                    figure = self.board.get_figure(int(pos_update["move-figure"]))
-                    old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
-                    old_field.figure = None
-                    field.update_figure(figure)
-                self.board.set_all_moveable_fields()
-
-            if not self.board.king.is_checkmate():
-                for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        pos = pygame.mouse.get_pos()
-                        for field in self.board.fields:
-                            if field.is_clicked(pos[0], pos[1]):
-                                if self.player.selected_field:
-                                    if field != self.player.selected_field:
-                                        if self.player.id == turn:
-                                            if field.coordinates in self.player.selected_field.figure.moveable_fields and not self.player.selected_field.figure.blocks_check:
-                                                rochade = False
-                                                if not self.board.king.in_check():
-                                                    if field.has_figure():
-                                                        if field.figure in self.player.figures:
-                                                            if isinstance(self.player.selected_field.figure, King):
-                                                                for figure in self.board.king.check_rochade():
-                                                                    if figure == field.figure:
-                                                                        rook = figure
-                                                                if rook.coordinates[1] > self.board.king.coordinates[1]:
-                                                                    new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 2])
-                                                                    new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 1])
-                                                                else:
-                                                                    new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 2])
-                                                                    new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 1])
-                                                                rochade = True
+                        if field.is_clicked(pos[0], pos[1]):
+                            if self.player.selected_field:
+                                if field != self.player.selected_field:
+                                    if self.player.id == turn:
+                                        if field.coordinates in self.player.selected_field.figure.moveable_fields and not self.player.selected_field.figure.blocks_check:
+                                            rochade = False
+                                            if not self.board.king.in_check():
+                                                if field.has_figure():
+                                                    if field.figure in self.player.figures:
+                                                        if isinstance(self.player.selected_field.figure, King):
+                                                            for figure in self.board.king.check_rochade():
+                                                                if figure == field.figure:
+                                                                    rook = figure
+                                                            if rook.coordinates[1] > self.board.king.coordinates[1]:
+                                                                new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 2])
+                                                                new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] + 1])
                                                             else:
-                                                                break
+                                                                new_field_king = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 2])
+                                                                new_field_rook = self.board.get_field_by_coords([self.board.king.coordinates[0], self.board.king.coordinates[1] - 1])
+                                                            rochade = True
                                                         else:
-                                                            self.n.send(str({"remove-figure": field.figure.id}))
-                                                else:
-                                                    check_fields = ast.literal_eval(self.n.send("get-fields-check"))
-                                                    if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
-                                                        if not self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
-                                                            if not self.player.selected_field.coordinates == self.board.king.coordinates:
-                                                                break
-                                                        else:
-                                                            if not field.coordinates in check_fields:
-                                                                break
-                                                            else:
-                                                                self.player.selected_field.figure.blocks_check = True
-
-                                                    elif self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
-                                                        if not field.coordinates in check_fields:
                                                             break
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
                                             else:
-                                                break
+                                                check_fields = ast.literal_eval(self.n.send("get-fields-check"))
+                                                if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
+                                                    if not self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
+                                                        if not self.player.selected_field.coordinates == self.board.king.coordinates:
+                                                            break
+                                                    else:
+                                                        if not field.coordinates in check_fields:
+                                                            break
+                                                        else:
+                                                            self.player.selected_field.figure.blocks_check = True
 
-                                            if rochade:
-                                                self.n.send(str({"move-figures": [{"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id},
-                                                                                  {"move-figure": field.figure.id, "field_id": new_field_rook.id}]}))
-                                            else:
-                                                self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
+                                                elif self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
+                                                    if not field.coordinates in check_fields:
+                                                        break
+                                                else:
+                                                    self.n.send(str({"remove-figure": field.figure.id}))
+                                        else:
+                                            break
 
-                                            self.n.send("change-turn")
-                                            self.player.selected_field.figure = None
-                                            self.player.selected_field.is_highlighted = False
-                                            self.player.selected_field = None
+                                        if rochade:
+                                            self.n.send(str({"move-figures": [{"move-figure": self.player.selected_field.figure.id, "field_id": new_field_king.id},
+                                                                              {"move-figure": field.figure.id, "field_id": new_field_rook.id}]}))
+                                        else:
+                                            self.n.send(str({"move-figure": self.player.selected_field.figure.id, "field_id": field.id}))
 
-                                    else:
-                                        field.is_highlighted = False
+                                        self.n.send("change-turn")
+                                        self.player.selected_field.figure = None
+                                        self.player.selected_field.is_highlighted = False
                                         self.player.selected_field = None
+
                                 else:
-                                    if field.has_figure():
-                                        if field.figure.player == self.player.id:
-                                            self.player.selected_field = field
-                                            field.is_highlighted = True
+                                    field.is_highlighted = False
+                                    self.player.selected_field = None
+                            else:
+                                if field.has_figure():
+                                    if field.figure.player == self.player.id:
+                                        self.player.selected_field = field
+                                        field.is_highlighted = True
 
-            else:
-                self.n.send(str({"has_won": 2 if self.player.id == 1 else 1}))
+        else:
+            self.n.send(str({"has_won": 2 if self.player.id == 1 else 1}))
 
-            self.board.draw()
-            self.handle_quit()
-            clock.tick(self.FPS)
-            pygame.display.update()
+        self.board.draw()
 
 class Field():
     def __init__(self, id, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
@@ -211,14 +258,18 @@ class Field():
         return self.figure
 
 class Board():
-    def __init__(self, player, game):
+    def __init__(self, player, players, game):
         self.fields = []
         self.figures = []
         self.field_size = height / 8
         self.player = player
         self.game = game
-
         self.king = None
+
+        self.first_player = players["first_player"]
+        self.second_player = players["second_player"]
+
+        print(self.first_player, self.second_player)
 
     def create(self):
         win_pos_y = 0
@@ -226,7 +277,13 @@ class Board():
         field_id_count = 1
         figure_id_count = 1
         for y in range(8):
-            owner = 2 if y < 2 else 1
+
+            if self.player.id == self.first_player:
+                owner = self.player.id if y > 2 else self.second_player
+
+            else:
+                owner = self.player.id if y < 3 else self.first_player
+
             for x in range(8):
                 if y == 1 or y == 6:
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
@@ -365,7 +422,7 @@ class Figure():
         self.blocks_check = False
 
     def draw(self):
-        if self.player == 1:
+        if self.player == self.board.first_player:
             screen.blit(self.image_w, self.image_w.get_rect(center=(self.win_pos_x + (self.board.field_size / 2), self.win_pos_y + (self.board.field_size / 2))))
         else:
             screen.blit(self.image_b, self.image_w.get_rect(center=(self.win_pos_x + (self.board.field_size / 2), self.win_pos_y + (self.board.field_size / 2))))
@@ -385,7 +442,7 @@ class Pawn(Figure):
         fields = []
         beatable_fields = []
 
-        if self.player == 1:
+        if self.player == self.board.first_player:
             direction = -1
         else:
             direction = 1
@@ -758,7 +815,7 @@ class Bishop(Figure):
         self.beatable_fields = beatable_fields
 
 class Button():
-    def __init__(self, color, x, y, width, height, text=None, text_size=None):
+    def __init__(self, color, x, y, width, height, text=None, text_size=None, data=None):
         self.color = color
         self.default_color = color
         self.x = x
@@ -767,10 +824,12 @@ class Button():
         self.height = height
         self.text = text
         self.text_size = text_size
+        self.data = data
 
-    def draw(self, outline=None, transparent=False):
+    def draw(self, outline=None, transparent=False, border=0):
+
         if outline:
-            pygame.draw.rect(screen, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), 0)
+            pygame.draw.rect(screen, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), border)
 
         if transparent:
                 rect = pygame.Surface((self.width, self.height))
@@ -778,7 +837,7 @@ class Button():
                 rect.fill(self.color)
                 screen.blit(rect, (self.x, self.y))
         else:
-            pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height), 0)
+            pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height), border)
 
         if self.text:
             font = pygame.font.SysFont('comicsans', self.text_size if self.text_size else 30)

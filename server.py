@@ -3,7 +3,7 @@ from _thread import *
 import ast
 
 server = "192.168.178.75"
-port = 5555
+port = 6666
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -12,62 +12,129 @@ try:
 except socket.error as e:
     print(e)
 
-s.listen(2)
+s.listen(6)
 print("Waiting for a connection, Server Started")
+
+clients = {}
+games = []
 
 connections = 0
 idCount = 0
-turn = 1
-pos_updates = []
-figure_ids = []
-check_fields = []
-has_won = None
+gameIdCount = 1
+
+class Game():
+    def __init__(self, id, host):
+        self.id = id
+
+        self.first_player = host["player_id"]
+        self.first_player_name = host["player_name"]
+
+        self.second_player = None
+        self.second_player_name = None
+
+        self.can_start = False
+
+        self.turn = self.first_player
+        self.pos_updates = []
+        self.figure_ids = []
+        self.check_fields = []
+        self.has_won = None
+
 
 def threaded_client(conn, id):
-    global turn, pos_updates, connections, figure_ids, has_won, check_fields
+    global turn, pos_updates, connections, figure_ids, has_won, check_fields, clients, gameIdCount, games
     conn.send(str.encode(str(id)))
+    session_id = conn.getpeername()[1]
+    player_id = clients[session_id]["player_id"]
     while True:
         try:
+            game = clients[session_id]["game"]
+
             data = conn.recv(2048).decode()
 
             #Set
-            if data == "change-turn":
-                if turn == 1:
-                    turn = 2
+            if "set-name" in data:
+                data = ast.literal_eval(data)
+                clients[session_id]["player_name"] = data["set-name"]
+
+            elif data == "create-game":
+                has_game = False
+                for game in games:
+                    if game.first_player == player_id:
+                        has_game = True
+
+                if not has_game:
+                    game = Game(gameIdCount, clients[session_id])
+                    games.append(game)
+                    clients[session_id]["game"] = game
+                    gameIdCount += 1
+
+            elif "join-game" in data:
+                data = ast.literal_eval(data)
+                game_join = data["join-game"]
+                for game in games:
+                    if game.id == game_join:
+                        if not game.first_player == player_id:
+                            if not game.second_player:
+                                game.second_player = player_id
+                                clients[session_id]["game"] = game
+                                game.can_start = True
+
+            elif data == "change-turn":
+                if game.turn == game.first_player:
+                    game.turn = game.second_player
                 else:
-                    turn = 1
+                    game.turn = game.first_player
 
             elif "remove-figure" in data:
                 data = ast.literal_eval(data)
                 figure_id = data["remove-figure"]
-                figure_ids.remove(figure_id)
+                game.figure_ids.remove(figure_id)
 
             elif "move-figures" in data:
                 data = ast.literal_eval(data)
-                pos_updates = []
+                game.pos_updates = []
                 for update in data["move-figures"]:
-                    pos_updates.append(update)
+                    game.pos_updates.append(update)
 
             elif "move-figure" in data:
                 data = ast.literal_eval(data)
-                pos_updates = []
-                pos_updates.append(data)
+                game.pos_updates = []
+                game.pos_updates.append(data)
 
             elif "set-figures" in data:
                 data = ast.literal_eval(data)
-                figure_ids = data["set-figures"]
+                game.figure_ids = data["set-figures"]
 
             elif "has_won" in data:
                 data = ast.literal_eval(data)
-                has_won = data["has_won"]
+                game.has_won = data["has_won"]
 
             elif "check-fields" in data:
                 data = ast.literal_eval(data)
-                check_fields = data["check-fields"]
+                game.check_fields = data["check-fields"]
 
             #Get
+            elif data == "get-games":
+                games_dict = [{"game_id": game.id, "host": game.first_player} for game in games]
+                conn.send(str.encode(str(games_dict)))
+                continue
+
+            elif data == "get-game-start":
+                can_start = False
+                if game:
+                    if game.can_start:
+                        can_start = True
+                conn.send(str.encode(str(can_start)))
+                continue
+
+            elif data == "get-players":
+                players = {"first_player": game.first_player, "second_player": game.second_player}
+                conn.send(str.encode(str(players)))
+                continue
+
             elif data == "get-turn":
-                conn.send(str.encode(str(turn)))
+                conn.send(str.encode(str(game.turn)))
                 continue
 
             elif data == "get-connections":
@@ -75,22 +142,22 @@ def threaded_client(conn, id):
                 continue
 
             elif data == "get-pos-update":
-                if pos_updates:
-                    conn.send(str.encode(str(pos_updates)))
+                if game.pos_updates:
+                    conn.send(str.encode(str(game.pos_updates)))
                 else:
                     conn.send(str.encode(str({})))
                 continue
 
             elif data == "get-figures":
-                conn.send(str.encode(str(figure_ids)))
+                conn.send(str.encode(str(game.figure_ids)))
                 continue
 
             elif data == "get-won":
-                conn.send(str.encode(str(has_won)))
+                conn.send(str.encode(str(game.has_won)))
                 continue
 
             elif data == "get-fields-check":
-                conn.send(str.encode(str(check_fields)))
+                conn.send(str.encode(str(game.check_fields)))
                 continue
 
             conn.send(str.encode("200"))
@@ -102,6 +169,7 @@ def threaded_client(conn, id):
             print(e)
             break
 
+    del clients[session_id]
     print("Lost connection")
     conn.close()
     connections -= 1
@@ -109,6 +177,9 @@ def threaded_client(conn, id):
 while True:
     conn, addr = s.accept()
     print("Connected to:", addr)
+
     idCount += 1
     connections += 1
+    clients[conn.getpeername()[1]] = {"player_id": idCount, "game": None, "player_name": None}
+
     start_new_thread(threaded_client, (conn, idCount))
