@@ -49,9 +49,6 @@ class Game():
         try:
             self.n = Network()
             self.player_id = int(self.n.get_id())
-
-            print(self.player_id)
-
             self.player = Player(self.player_id)
             return True
         except:
@@ -60,7 +57,7 @@ class Game():
     def startscreen(self):
         font = pygame.font.SysFont("Comic Sans MS", 40)
         screen.fill((133, 94, 66))
-        connect_btn = Button((255, 255, 255), width / 2 - 50, height / 1.5, 100, 100, text="Play")
+        connect_btn = Button((255, 255, 255), width / 2 - 50, height / 2, 100, 100, text="Play")
 
         if connect_btn.isClicked(pygame.mouse.get_pos()):
             if self.connect():
@@ -580,10 +577,8 @@ class King(Figure):
                                         if field.coordinates in f.moveable_fields:
                                             append = False
                                             break
-
                         if append:
                             rooks.append(figure)
-
         return rooks
 
 class Rook(Figure):
@@ -827,7 +822,6 @@ class Button():
         self.data = data
 
     def draw(self, outline=None, transparent=False, border=0):
-
         if outline:
             pygame.draw.rect(screen, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), border)
 

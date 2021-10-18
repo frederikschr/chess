@@ -79,6 +79,7 @@ def threaded_client(conn, id):
                                 game.second_player = player_id
                                 clients[session_id]["game"] = game
                                 game.can_start = True
+                                games.remove(game)
 
             elif data == "change-turn":
                 if game.turn == game.first_player:
