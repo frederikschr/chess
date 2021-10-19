@@ -40,7 +40,6 @@ class Game():
         self.check_fields = []
         self.has_won = None
 
-
 def threaded_client(conn, id):
     global turn, pos_updates, connections, figure_ids, has_won, check_fields, clients, gameIdCount, games
     conn.send(str.encode(str(id)))
@@ -73,13 +72,16 @@ def threaded_client(conn, id):
                 data = ast.literal_eval(data)
                 game_join = data["join-game"]
                 for game in games:
-                    if game.id == game_join:
-                        if not game.first_player == player_id:
+                    if not game.first_player == player_id:
+                        if game.id == game_join:
                             if not game.second_player:
                                 game.second_player = player_id
                                 clients[session_id]["game"] = game
                                 game.can_start = True
                                 games.remove(game)
+                                for game in games:
+                                    if game.first_player == player_id:
+                                        games.remove(game)
 
             elif data == "change-turn":
                 if game.turn == game.first_player:

@@ -5,11 +5,8 @@ import ast
 
 """
 To-Do:
--Getting events only one time and saving them in a variable
 -Umwandlung
 -Checkmate update
--Menu 
--Sounds
 """
 
 class Game():
@@ -24,6 +21,8 @@ class Game():
 
         self.events = None
 
+        self.sound = True
+
     def run(self):
         while True:
             if self.stage == 1:
@@ -37,6 +36,9 @@ class Game():
 
             elif self.stage == 4:
                 self.game()
+
+            elif self.stage == 5:
+                self.settings()
 
             else:
                 pass
@@ -62,11 +64,21 @@ class Game():
             return False
 
     def startscreen(self):
-        font = pygame.font.SysFont("Comic Sans MS", 40)
-        small_font = pygame.font.SysFont("Comic Sans MS", 20)
         screen.fill((133, 94, 66))
         connect_btn = Button((255, 255, 255), width / 2 - 50, height / 1.5, 100, 100, text="Play")
         name_button = Button((255, 255, 255), width / 2 - 100, height / 2, 200, 50)
+        settings_button = Button((255, 255, 255), width - 125, height - 100, 100, 75, text="Settings")
+
+        if self.selected:
+            for event in self.events:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        self.selected = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.name_text = self.name_text[:-1]
+                    else:
+                        if len(self.name_text) <= 15:
+                            self.name_text += event.unicode
 
         if name_button.isClicked(pygame.mouse.get_pos()):
             if not self.selected:
@@ -76,40 +88,30 @@ class Game():
                 self.selected = False
                 self.name_text = "Enter Name"
 
-        if self.selected:
-            for event in self.events:
-                if event.type == pygame.KEYDOWN:
-                    pygame.key.set_repeat(1, 100)
-                    if event.key == pygame.K_RETURN:
-                        self.selected = False
-                        print("here")
-                    elif event.key == pygame.K_BACKSPACE:
-                        self.name_text = self.name_text[:-1]
-                    else:
-                        self.name_text += event.unicode
-
-
-        pygame.draw.line(screen, (255, 255, 255), (width / 2 - 100, height / 2 + 50), (width / 2 + 100, height / 2 + 50), 3)
-
         if connect_btn.isClicked(pygame.mouse.get_pos()):
-            if self.connect():
-                self.n.send(str({"set-name": self.name_text}))
-                self.username = self.name_text
-                self.is_connected = True
-                self.stage = 2
+            if self.name_text != "":
+                if self.connect():
+                    self.n.send(str({"set-name": self.name_text}))
+                    self.username = self.name_text
+                    self.is_connected = True
+                    self.stage = 2
+
+        if settings_button.isClicked(pygame.mouse.get_pos()):
+            self.stage = 5
 
         connect_btn.draw(border=3)
-
-        title = font.render("Chess", None, (255, 255, 255))
+        settings_button.draw(border=3)
+        pygame.draw.line(screen, (255, 255, 255), (width / 2 - 100, height / 2 + 50), (width / 2 + 100, height / 2 + 50), 3)
+        title = big_font.render("Chess", None, (255, 255, 255))
         name = small_font.render(str(self.name_text), None, (255, 255, 255))
         screen.blit(title, (width / 2 - title.get_width() / 2, height / 3))
         screen.blit(name, (width / 2 - name.get_width() / 2, height / 2))
 
-
     def gameslist(self):
         font = pygame.font.SysFont("Comic Sans MS", 40)
+        small_font = pygame.font.SysFont("Comic Sans MS", 25)
         screen.fill((133, 94, 66))
-        create_game_btn = Button((255, 255, 255), width / 3 - 50, height / 3, 100, 100, text="Create")
+        create_game_btn = Button((255, 255, 255), width / 2 + 250, height / 3, 100, 60, text="Create")
 
         connections = int(self.n.send("get-connections"))
         games = ast.literal_eval(self.n.send("get-games"))
@@ -122,11 +124,11 @@ class Game():
         game_join_buttons = []
 
         for game in games:
-            game_text = font.render(f"{game['game_id']}...{game['host']}", None, (255, 255, 255))
+            game_text = small_font.render(f"{game['game_id']}.  {game['host']}", None, (255, 255, 255))
             if not game["host"] == self.username:
                 game_join_btn = Button((255, 255, 255), width / 2 + 150, y_count, 50, 50, text="Join", data=game["game_id"])
                 game_join_buttons.append(game_join_btn)
-            screen.blit(game_text, (width / 2 - game_text.get_width(), y_count))
+            screen.blit(game_text, (width / 2 - game_text.get_width() / 2 , y_count))
             y_count += 100
 
         for join_btn in game_join_buttons:
@@ -134,14 +136,12 @@ class Game():
             if join_btn.isClicked(pygame.mouse.get_pos()):
                 self.n.send(str({"join-game": join_btn.data}))
 
-        create_game_btn.draw(border=3)
-
         if ast.literal_eval(self.n.send("get-game-start")) == True:
             self.stage = 3
 
+        create_game_btn.draw(border=3)
         games_text = font.render("Games", None, (255, 255, 255))
         conn_text = font.render(str(connections), None, (255, 255, 255))
-
         screen.blit(games_text, (width / 2 - games_text.get_width() / 2, height / 3))
         screen.blit(conn_text, (width - (conn_text.get_width() * 2), height - 50))
 
@@ -150,18 +150,40 @@ class Game():
         self.board.create()
         self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
         self.old_pos_updates = None
-
         self.stage = 4
+        if self.sound:
+            pygame.mixer.Sound.play(start_sound)
+
+    def settings(self):
+        screen.fill((133, 94, 66))
+        settings_text = big_font.render("Settings", None, (255, 255, 255))
+        sounds_button = Button((255, 255, 255), width / 2 - 50, height / 2, 75, 50, text="Sound")
+        back_button = Button((255, 255, 255), width - 125, height - 100, 100, 75, text="Back")
+
+        if sounds_button.isClicked(pygame.mouse.get_pos()):
+            self.sound = not self.sound
+
+        if back_button.isClicked(pygame.mouse.get_pos()):
+            self.stage = 1
+
+        sound_text = small_font.render("On" if self.sound else "Off", None, (255, 255, 255))
+        screen.blit(sound_text, (width / 2 + 50, height / 2 + sound_text.get_height() / 2))
+        screen.blit(settings_text, (width / 2 - settings_text.get_width() / 2, height / 3))
+        sounds_button.draw(border=3)
+        back_button.draw(border=3)
+
 
     def game(self):
         turn = int(self.n.send("get-turn"))
         pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
         figure_ids = ast.literal_eval(self.n.send("get-figures"))
         #has_won = self.n.send("get-won")
-
+        removed = False
+        has_pos_updates = False
         for figure in self.board.figures:
             if figure.id not in figure_ids:
                 self.board.figures.remove(figure)
+                removed = True
                 if figure in self.player.figures:
                     self.player.figures.remove(figure)
                 for field in self.board.fields:
@@ -170,6 +192,7 @@ class Game():
 
         if pos_updates != {} and pos_updates != self.old_pos_updates:
             self.old_pos_updates = pos_updates
+            has_pos_updates = True
             for pos_update in pos_updates:
                 field = self.board.get_field_by_id(int(pos_update["field_id"]))
                 figure = self.board.get_figure(int(pos_update["move-figure"]))
@@ -177,6 +200,21 @@ class Game():
                 old_field.figure = None
                 field.update_figure(figure)
             self.board.set_all_moveable_fields()
+
+        if self.sound and has_pos_updates:
+            if not self.board.get_check():
+                if removed:
+                    pygame.mixer.Sound.play(capture_sound)
+                else:
+                    if len(pos_updates) > 1:
+                        pygame.mixer.Sound.play(rochade_sound)
+                    else:
+                        pygame.mixer.Sound.play(move_sound)
+            else:
+                if self.board.get_checkmate():
+                    pygame.mixer.Sound.play(checkmate_sound)
+                else:
+                    pygame.mixer.Sound.play(check_sound)
 
         if not self.board.king.is_checkmate():
             for event in pygame.event.get():
@@ -299,11 +337,8 @@ class Board():
         self.player = player
         self.game = game
         self.king = None
-
         self.first_player = players["first_player"]
         self.second_player = players["second_player"]
-
-        print(self.first_player, self.second_player)
 
     def create(self):
         win_pos_y = 0
@@ -311,10 +346,8 @@ class Board():
         field_id_count = 1
         figure_id_count = 1
         for y in range(8):
-
             if self.player.id == self.first_player:
                 owner = self.player.id if y > 2 else self.second_player
-
             else:
                 owner = self.player.id if y < 3 else self.first_player
 
@@ -378,6 +411,7 @@ class Board():
             field.color = color
 
     def draw(self):
+        screen.fill((133, 94, 66))
         for field in self.fields:
             outline = False
             if self.player.selected_field:
@@ -426,6 +460,20 @@ class Board():
             if figure.id == id:
                 return figure
         return None
+
+    def get_check(self):
+        for figure in self.figures:
+            if isinstance(figure, King):
+                if figure.in_check():
+                    return True
+        return False
+
+    def get_checkmate(self):
+        for figure in self.figures:
+            if isinstance(figure, King):
+                if figure.is_checkmate():
+                    return True
+        return False
 
 class Player():
     def __init__(self, id):
@@ -896,7 +944,15 @@ screen = pygame.display.set_mode([width, height])
 
 pygame.font.init()
 
-font = pygame.font.SysFont("Comic Sans MS", 20)
+small_font = pygame.font.SysFont("Comic Sans MS", 20)
+big_font = pygame.font.SysFont("Comic Sans MS", 40)
+
+start_sound = pygame.mixer.Sound("./assets/start_sound.mp3")
+move_sound = pygame.mixer.Sound("./assets/move_sound.mp3")
+capture_sound = pygame.mixer.Sound("./assets/capture_sound.mp3")
+rochade_sound = pygame.mixer.Sound("./assets/rochade_sound.mp3")
+check_sound = pygame.mixer.Sound("./assets/check_sound.mp3")
+checkmate_sound = pygame.mixer.Sound("./assets/checkmate_sound.mp3")
 
 pygame.display.set_caption("Chess")
 
