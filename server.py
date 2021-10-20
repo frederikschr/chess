@@ -48,7 +48,6 @@ def threaded_client(conn, id):
     while True:
         try:
             game = clients[session_id]["game"]
-
             data = conn.recv(2048).decode()
 
             #Set
