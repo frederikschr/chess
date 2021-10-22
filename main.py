@@ -143,7 +143,7 @@ class Game():
         screen.blit(conn_text, (width - (conn_text.get_width() * 2), height - 50))
 
     def create_board(self):
-        self.board = Board(self.player, ast.literal_eval(self.n.send("get-players")), self)
+        self.board = Board(self.player, ast.literal_eval(self.n.send("get-players")), self, self.n)
         self.board.create()
         self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
         self.old_pos_updates = None
@@ -195,13 +195,11 @@ class Game():
             for pos_update in pos_updates:
                 field = self.board.get_field_by_id(int(pos_update["field_id"]))
                 figure = self.board.get_figure(int(pos_update["move-figure"]))
-                if figure == self.board.king.attacker:
-                    self.board.king.attacker = None
                 old_field = self.board.get_field_by_coords([figure.coordinates[0], figure.coordinates[1]])
                 old_field.figure = None
                 field.update_figure(figure)
             self.board.set_all_moveable_fields()
-            self.board.check_blockers()
+            self.board.check_blocks_check()
 
         if self.sound and has_pos_updates:
             if not self.board.get_check():
@@ -245,15 +243,8 @@ class Game():
                                                             rochade = True
                                                         else:
                                                             break
-
-                                                if self.player.selected_field.figure.blocks_check:
-                                                    if self.player.selected_field.figure in self.board.king.get_attacker_beaters():
-                                                        if field.coordinates == self.board.king.coordinates:
-                                                            self.n.send(str({"remove-figure": field.figure.id}))
                                                     else:
-                                                        break
-                                                if field.has_figure():
-                                                    self.n.send(str({"remove-figure": field.figure.id}))
+                                                        self.n.send(str({"remove-figure": field.figure.id}))
                                             else:
                                                 check_fields = ast.literal_eval(self.n.send("get-fields-check"))
                                                 if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
@@ -339,13 +330,14 @@ class Field():
         return self.figure
 
 class Board():
-    def __init__(self, player, players, game):
+    def __init__(self, player, players, game, n):
         self.fields = []
         self.figures = []
         self.field_size = height / 8
         self.player = player
         self.game = game
         self.king = None
+        self.n = n
         self.first_player = players["first_player"]
         self.second_player = players["second_player"]
 
@@ -441,29 +433,31 @@ class Board():
 
     def set_all_moveable_fields(self):
         for figure in self.figures:
+            figure.blocks_check = False
             if not isinstance(figure, King):
                 figure.set_moveable_fields()
         self.king.set_moveable_fields()
 
-    def check_blockers(self):
-        figures = []
-        if self.king.attacker:
-            for field in self.king.attacker.line_fields:
-                field = self.get_field_by_coords(field)
-                if field.has_figure():
-                    if field.coordinates != self.king.attacker.coordinates:
-                        figures.append(field.figure)
-            if len(figures) == 1:
-                figures[0].blocks_check = True
-                if figures[0] in self.king.get_attacker_beaters():
-                    figures[0].moveable_fields = self.king.attacker.line_fields
-                    figures[0].moveable_fields.append(self.king.attacker.coordinates)
-                else:
-                    figures[0].moveable_fields = []
-                return
-        for figure in self.figures:
-            if figure.blocks_check:
-                figure.blocks_check = False
+    def check_blocks_check(self):
+        for move_figure in self.player.figures:
+            for figure in self.figures:
+                if figure.player != self.player.id:
+                    if move_figure in figure.figures_to_king:
+                        if len(figure.figures_to_king) == 1:
+                            moveable_fields = []
+                            for field in figure.line_fields:
+                                if not isinstance(move_figure, Pawn):
+                                    if field in move_figure.moveable_fields:
+                                        moveable_fields.append(field)
+                                else:
+                                    if field in move_figure.beatable_fields:
+                                        moveable_fields.append(field)
+
+                            if figure.coordinates in move_figure.moveable_fields:
+                                moveable_fields.append(figure.coordinates)
+
+                            move_figure.moveable_fields = moveable_fields
+
 
     def get_field_by_id(self, id):
         for field in self.fields:
@@ -528,6 +522,8 @@ class Figure():
 
         self.moveable_fields = []
         self.beatable_fields = []
+
+        self.figures_to_king = []
 
         self.blocks_check = False
 
@@ -730,7 +726,8 @@ class Rook(Figure):
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
                                 append = False
-                                self.board.game.n.send(str({"check-fields": line_fields}))
+                                if int(self.board.n.send("get-turn")) != self.player:
+                                    self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                             else:
                                 break
@@ -836,7 +833,8 @@ class Queen(Figure):
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
                                 append = False
-                                self.board.game.n.send(str({"check-fields": line_fields}))
+                                if int(self.board.n.send("get-turn")) != self.player:
+                                    self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                             else:
                                 break
@@ -873,6 +871,8 @@ class Bishop(Figure):
 
         self.line_fields = []
 
+        self.figures_to_king = []
+
     def set_moveable_fields(self):
         fields = []
         beatable_fields = []
@@ -892,6 +892,7 @@ class Bishop(Figure):
                 x_counter = -1
 
             line_fields = []
+            figures_to_king = []
             append = True
             for x in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
@@ -902,15 +903,20 @@ class Bishop(Figure):
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
                                 append = False
-                                self.board.game.n.send(str({"check-fields": line_fields}))
+                                if int(self.board.n.send("get-turn")) != self.player:
+                                    self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
+                                self.figures_to_king = figures_to_king
                             else:
-                                break
+                                if append:
+                                    line_fields.append(field.coordinates)
+                                append = False
+                                figures_to_king.append(field.figure)
                         else:
                             break
                     else:
+                        line_fields.append(field.coordinates)
                         if append:
-                            line_fields.append(field.coordinates)
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
