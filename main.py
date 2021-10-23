@@ -6,7 +6,6 @@ import ast
 """
 To-Do:
 -Umwandlung
--Checkmate update
 """
 
 class Game():
@@ -698,6 +697,7 @@ class Rook(Figure):
         self.line_fields = []
 
     def set_moveable_fields(self):
+        self.figures_to_king.clear()
         fields = []
         beatable_fields = []
 
@@ -716,6 +716,7 @@ class Rook(Figure):
                 x_counter = -1
 
             line_fields = []
+            figures_to_king = []
             append = True
             for x in range(9):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
@@ -725,17 +726,20 @@ class Rook(Figure):
                             if append:
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
-                                append = False
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
-                            else:
+                                self.figures_to_king = figures_to_king
                                 break
+                            else:
+                                line_fields.append(field.coordinates)
+                                figures_to_king.append(field.figure)
+                            append = False
                         else:
                             break
                     else:
+                        line_fields.append(field.coordinates)
                         if append:
-                            line_fields.append(field.coordinates)
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
@@ -792,7 +796,10 @@ class Queen(Figure):
 
         self.line_fields = []
 
+        self.figures_to_king = []
+
     def set_moveable_fields(self):
+        self.figures_to_king.clear()
         fields = []
         beatable_fields = []
 
@@ -823,6 +830,7 @@ class Queen(Figure):
                 x_counter = 1
 
             line_fields = []
+            figures_to_king = []
             append = True
             for i in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
@@ -832,18 +840,20 @@ class Queen(Figure):
                             if append:
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
-                                append = False
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
-                            else:
+                                self.figures_to_king = figures_to_king
                                 break
+                            else:
+                                line_fields.append(field.coordinates)
+                                figures_to_king.append(field.figure)
+                            append = False
                         else:
                             break
-
                     else:
+                        line_fields.append(field.coordinates)
                         if append:
-                            line_fields.append(field.coordinates)
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
@@ -874,6 +884,7 @@ class Bishop(Figure):
         self.figures_to_king = []
 
     def set_moveable_fields(self):
+        self.figures_to_king.clear()
         fields = []
         beatable_fields = []
 
@@ -902,16 +913,15 @@ class Bishop(Figure):
                             if append:
                                 fields.append(field.coordinates)
                             if isinstance(field.figure, King):
-                                append = False
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                                 self.figures_to_king = figures_to_king
+                                break
                             else:
-                                if append:
-                                    line_fields.append(field.coordinates)
-                                append = False
+                                line_fields.append(field.coordinates)
                                 figures_to_king.append(field.figure)
+                            append = False
                         else:
                             break
                     else:
