@@ -438,7 +438,6 @@ class Board():
             figure.blocks_check = False
             if not isinstance(figure, King):
                 figure.set_moveable_fields()
-
         self.king.set_moveable_fields()
 
         if self.king.in_check():
@@ -654,10 +653,13 @@ class King(Figure):
         return figures
 
     def can_move_between(self, figure, check_fields):
+        moveable_fields = []
         for field in figure.moveable_fields:
             if field in check_fields:
-                figure.moveable_fields = [field]
-                return True
+                moveable_fields.append(field)
+        if moveable_fields:
+            figure.moveable_fields = moveable_fields
+            return True
         return False
 
     def is_checkmate(self):
