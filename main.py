@@ -245,6 +245,9 @@ class Game():
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
                                             else:
+
+                                                print("check")
+
                                                 check_fields = ast.literal_eval(self.n.send("get-fields-check"))
                                                 if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
                                                     if not self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
@@ -435,7 +438,15 @@ class Board():
             figure.blocks_check = False
             if not isinstance(figure, King):
                 figure.set_moveable_fields()
+
         self.king.set_moveable_fields()
+
+        if self.king.in_check():
+            check_fields = ast.literal_eval(self.n.send("get-fields-check"))
+            for figure in self.figures:
+                if figure.player == self.player.id:
+                    self.king.get_attacker_beaters()
+                    self.king.can_move_between(figure, check_fields)
 
     def check_blocks_check(self):
         for move_figure in self.player.figures:
@@ -606,7 +617,7 @@ class King(Figure):
             for figure in self.board.figures:
                 if figure.player != self.player:
                     if not isinstance(figure, Pawn):
-                        if field.coordinates in figure.moveable_fields or field.coordinates in figure.beatable_fields:
+                        if field.coordinates in figure.moveable_fields:
                             append = False
                     else:
                         if field.coordinates in figure.beatable_fields:
@@ -638,12 +649,14 @@ class King(Figure):
             for figure in self.board.player.figures:
                 if self.attacker.coordinates in figure.moveable_fields:
                     figures.append(figure)
+                    figure.moveable_fields = [self.attacker.coordinates]
 
         return figures
 
     def can_move_between(self, figure, check_fields):
         for field in figure.moveable_fields:
             if field in check_fields:
+                figure.moveable_fields = [field]
                 return True
         return False
 
