@@ -75,6 +75,7 @@ def threaded_client(conn, id):
                         if game.id == game_join:
                             if not game.second_player:
                                 game.second_player = player_id
+                                game.second_player_name = data["username"]
                                 clients[session_id]["game"] = game
                                 game.can_start = True
                                 games.remove(game)
@@ -112,6 +113,8 @@ def threaded_client(conn, id):
                 data = ast.literal_eval(data)
                 game.has_won = data["has_won"]
 
+                print(game.has_won)
+
             elif "check-fields" in data:
                 data = ast.literal_eval(data)
                 game.check_fields = data["check-fields"]
@@ -131,7 +134,7 @@ def threaded_client(conn, id):
                 continue
 
             elif data == "get-players":
-                players = {"first_player": game.first_player, "second_player": game.second_player}
+                players = {"first_player": game.first_player, "first_player_name": game.first_player_name, "second_player": game.second_player, "second_player_name": game.second_player_name}
                 conn.send(str.encode(str(players)))
                 continue
 

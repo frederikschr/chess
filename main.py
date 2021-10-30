@@ -14,7 +14,10 @@ class Game():
         self.FPS = 60
         self.is_connected = False
         self.username = None
+        self.fist_player_name = None
+        self.second_player_name = None
         self.selected = False
+        self.winner = None
         self.name_text = "Enter Name"
         self.events = None
         self.sound = True
@@ -35,6 +38,9 @@ class Game():
 
             elif self.stage == 5:
                 self.settings()
+
+            elif self.stage == 6:
+                self.endscreen()
 
             else:
                 pass
@@ -130,7 +136,7 @@ class Game():
         for join_btn in game_join_buttons:
             join_btn.draw(border=3)
             if join_btn.isClicked(pygame.mouse.get_pos()):
-                self.n.send(str({"join-game": join_btn.data}))
+                self.n.send(str({"join-game": join_btn.data, "username": self.username}))
 
         if ast.literal_eval(self.n.send("get-game-start")) == True:
             self.stage = 3
@@ -141,8 +147,24 @@ class Game():
         screen.blit(games_text, (width / 2 - games_text.get_width() / 2, height / 3))
         screen.blit(conn_text, (width - (conn_text.get_width() * 2), height - 50))
 
+    def endscreen(self):
+
+        pygame.draw.rect(screen, (0, 0, 0), (width / 2 - 200, height / 2 - 150, 400, 300))
+
+        winner_text = small_font.render(self.winner, None, (255, 255, 255))
+
+        screen.blit(winner_text, (width / 2 - winner_text.get_width() / 2, height / 2))
+
+
+
+
+
+
     def create_board(self):
-        self.board = Board(self.player, ast.literal_eval(self.n.send("get-players")), self, self.n)
+        players = ast.literal_eval(self.n.send("get-players"))
+        self.first_player_name = players["first_player_name"]
+        self.second_player_name = players["second_player_name"]
+        self.board = Board(self.player, players, self, self.n)
         self.board.create()
         self.n.send(str({"set-figures": [figure.id for figure in self.board.figures]}))
         self.old_pos_updates = None
@@ -173,9 +195,13 @@ class Game():
         turn = int(self.n.send("get-turn"))
         pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
         figure_ids = ast.literal_eval(self.n.send("get-figures"))
-        #has_won = self.n.send("get-won")
+        has_won = self.n.send("get-won")
         removed = False
         has_pos_updates = False
+        if has_won != "None":
+            self.stage = 6
+            self.winner = has_won
+            return
         for figure in self.board.figures:
             if figure.id not in figure_ids:
                 self.board.figures.remove(figure)
@@ -285,7 +311,11 @@ class Game():
                                         field.is_highlighted = True
 
         else:
-            self.n.send(str({"has_won": 2 if self.player.id == 1 else 1}))
+
+
+
+
+            self.n.send(str({"has_won": self.second_player_name if self.player.id == 1 else self.first_player_name}))
 
         self.board.draw()
 
@@ -441,6 +471,7 @@ class Board():
         if self.king.in_check():
             check_fields = ast.literal_eval(self.n.send("get-fields-check"))
             self.check_involved.clear()
+            self.king.move_between = False
             for figure in self.figures:
                 if figure.player == self.player.id:
                     self.king.get_attacker_beaters()
@@ -659,14 +690,15 @@ class King(Figure):
         return figures
 
     def can_move_between(self, figure, check_fields):
+        print(self.move_between)
         moveable_fields = []
-        self.move_between = False
         for field in figure.moveable_fields:
             if field in check_fields:
                 moveable_fields.append(field)
         if moveable_fields:
             figure.moveable_fields = moveable_fields
             self.move_between = True
+            print(figure.coordinates)
             self.board.check_involved.append(figure)
             return True
         return False
