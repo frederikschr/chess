@@ -245,9 +245,6 @@ class Game():
                                                     else:
                                                         self.n.send(str({"remove-figure": field.figure.id}))
                                             else:
-
-                                                print("check")
-
                                                 check_fields = ast.literal_eval(self.n.send("get-fields-check"))
                                                 if not self.player.selected_field.figure in self.board.king.get_attacker_beaters():
                                                     if not self.board.king.can_move_between(self.player.selected_field.figure, check_fields):
@@ -339,6 +336,7 @@ class Board():
         self.player = player
         self.game = game
         self.king = None
+        self.check_involved = []
         self.n = n
         self.first_player = players["first_player"]
         self.second_player = players["second_player"]
@@ -442,10 +440,16 @@ class Board():
 
         if self.king.in_check():
             check_fields = ast.literal_eval(self.n.send("get-fields-check"))
+            self.check_involved.clear()
             for figure in self.figures:
                 if figure.player == self.player.id:
                     self.king.get_attacker_beaters()
                     self.king.can_move_between(figure, check_fields)
+
+            for figure in self.figures:
+                if figure.player == self.player.id:
+                    if figure not in self.check_involved:
+                        figure.moveable_fields.clear()
 
     def check_blocks_check(self):
         for move_figure in self.player.figures:
@@ -596,6 +600,8 @@ class King(Figure):
         self.attacker = None
         self.first_move = True
 
+        self.move_between = False
+
         self.image_w = pygame.image.load("./assets/king_w.png")
         self.image_b = pygame.image.load("./assets/king_b.png")
 
@@ -649,23 +655,29 @@ class King(Figure):
                 if self.attacker.coordinates in figure.moveable_fields:
                     figures.append(figure)
                     figure.moveable_fields = [self.attacker.coordinates]
-
+                    self.board.check_involved.append(figure)
         return figures
 
     def can_move_between(self, figure, check_fields):
         moveable_fields = []
+        self.move_between = False
         for field in figure.moveable_fields:
             if field in check_fields:
                 moveable_fields.append(field)
         if moveable_fields:
             figure.moveable_fields = moveable_fields
+            self.move_between = True
+            self.board.check_involved.append(figure)
             return True
         return False
 
     def is_checkmate(self):
+        if self.in_check():
+            if not self.get_attacker_beaters():
+                if not self.move_between:
+                    if self.moveable_fields == []:
+                        return True
         return False
-        #if self.moveable_fields == [] and self.in_check():
-            #return True
 
     def check_rochade(self):
         rooks = []
