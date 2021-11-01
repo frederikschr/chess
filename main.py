@@ -14,7 +14,9 @@ class Game():
         self.FPS = 60
         self.is_connected = False
         self.username = None
+        self.first_player = None
         self.fist_player_name = None
+        self.second_player = None
         self.second_player_name = None
         self.selected = False
         self.winner = None
@@ -24,6 +26,8 @@ class Game():
 
     def run(self):
         while True:
+            screen.fill((133, 94, 66))
+
             if self.stage == 1:
                 self.startscreen()
 
@@ -149,20 +153,27 @@ class Game():
 
     def endscreen(self):
 
+        self.n.send("delete-game")
+
         pygame.draw.rect(screen, (0, 0, 0), (width / 2 - 200, height / 2 - 150, 400, 300))
 
-        winner_text = small_font.render(self.winner, None, (255, 255, 255))
+        winner_text = small_font.render(f"{self.winner} won by ...", None, (255, 255, 255))
 
         screen.blit(winner_text, (width / 2 - winner_text.get_width() / 2, height / 2))
 
+        return_btn = Button((255, 255, 255), width / 2 - 50, height / 2 + 100, 100, 50, text="Menu")
 
+        if return_btn.isClicked(pygame.mouse.get_pos()):
+            self.stage = 2
 
-
-
+        return_btn.draw(outline=3)
 
     def create_board(self):
         players = ast.literal_eval(self.n.send("get-players"))
+        self.player.figures.clear()
+        self.first_player = players["first_player"]
         self.first_player_name = players["first_player_name"]
+        self.second_player = players["second_player"]
         self.second_player_name = players["second_player_name"]
         self.board = Board(self.player, players, self, self.n)
         self.board.create()
@@ -189,7 +200,6 @@ class Game():
         screen.blit(settings_text, (width / 2 - settings_text.get_width() / 2, height / 3))
         sounds_button.draw(border=3)
         back_button.draw(border=3)
-
 
     def game(self):
         turn = int(self.n.send("get-turn"))
@@ -311,11 +321,7 @@ class Game():
                                         field.is_highlighted = True
 
         else:
-
-
-
-
-            self.n.send(str({"has_won": self.second_player_name if self.player.id == 1 else self.first_player_name}))
+            self.n.send(str({"has_won": self.second_player_name if self.player.id == self.first_player else self.first_player_name}))
 
         self.board.draw()
 
@@ -383,6 +389,7 @@ class Board():
                 owner = self.player.id if y < 3 else self.first_player
 
             for x in range(8):
+
                 if y == 1 or y == 6:
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
@@ -687,10 +694,10 @@ class King(Figure):
                     figures.append(figure)
                     figure.moveable_fields = [self.attacker.coordinates]
                     self.board.check_involved.append(figure)
+
         return figures
 
     def can_move_between(self, figure, check_fields):
-        print(self.move_between)
         moveable_fields = []
         for field in figure.moveable_fields:
             if field in check_fields:
@@ -698,7 +705,6 @@ class King(Figure):
         if moveable_fields:
             figure.moveable_fields = moveable_fields
             self.move_between = True
-            print(figure.coordinates)
             self.board.check_involved.append(figure)
             return True
         return False
