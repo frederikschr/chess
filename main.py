@@ -20,9 +20,11 @@ class Game():
         self.second_player_name = None
         self.selected = False
         self.winner = None
+        self.win_reason = None
         self.name_text = "Enter Name"
         self.events = None
         self.sound = True
+        self.confirm_surrender = False
 
     def run(self):
         while True:
@@ -152,21 +154,26 @@ class Game():
         screen.blit(conn_text, (width - (conn_text.get_width() * 2), height - 50))
 
     def endscreen(self):
-
         self.n.send("delete-game")
 
         pygame.draw.rect(screen, (0, 0, 0), (width / 2 - 200, height / 2 - 150, 400, 300))
 
-        winner_text = small_font.render(f"{self.winner} won by ...", None, (255, 255, 255))
+        winner_text = small_font.render(f"{self.winner} won by {self.win_reason}", None, (255, 255, 255))
 
         screen.blit(winner_text, (width / 2 - winner_text.get_width() / 2, height / 2))
 
-        return_btn = Button((255, 255, 255), width / 2 - 50, height / 2 + 100, 100, 50, text="Menu")
+        return_btn = Button((255, 255, 255), width / 2 - 125, height / 2 + 75, 100, 50, text="Menu")
+        exit_btn = Button((255, 255, 255), width / 2 + 25, height / 2 + 75, 100, 50, text="Exit")
 
         if return_btn.isClicked(pygame.mouse.get_pos()):
             self.stage = 2
 
-        return_btn.draw(outline=3)
+        elif exit_btn.isClicked(pygame.mouse.get_pos()):
+            pygame.quit()
+            sys.exit()
+
+        return_btn.draw(border=3)
+        exit_btn.draw(border=3)
 
     def create_board(self):
         players = ast.literal_eval(self.n.send("get-players"))
@@ -203,14 +210,30 @@ class Game():
 
     def game(self):
         turn = int(self.n.send("get-turn"))
+        player_turn = self.first_player_name if turn == self.first_player else self.second_player_name
+        turn_text = small_font.render(f"Turn: {player_turn}", None, (255, 255, 255))
+        surrender_btn = Button((255, 255, 255), 850, 150, 70, 30, text="Exit")
+        if surrender_btn.isClicked(pygame.mouse.get_pos()):
+            self.confirm_surrender = True
+        if self.confirm_surrender:
+            confirm_txt = small_font.render("Are you sure?", None, (255, 255, 255))
+            yes_btn = Button((255, 255, 255), 850, 250, 50, 50, text="Yes")
+            no_btn = Button((255, 255, 255), 925, 250, 50, 50, text="No")
+            if yes_btn.isClicked(pygame.mouse.get_pos()):
+                self.confirm_surrender = False
+                self.n.send(str({"has_won": self.second_player_name if self.player.id == self.first_player else self.first_player_name, "reason": "Surrender"}))
+            elif no_btn.isClicked(pygame.mouse.get_pos()):
+                self.confirm_surrender = False
         pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
         figure_ids = ast.literal_eval(self.n.send("get-figures"))
-        has_won = self.n.send("get-won")
+        has_won = ast.literal_eval(self.n.send("get-won"))
         removed = False
         has_pos_updates = False
-        if has_won != "None":
+
+        if has_won["has_won"] != None:
             self.stage = 6
-            self.winner = has_won
+            self.winner = has_won["has_won"]
+            self.win_reason = has_won["win_reason"]
             return
         for figure in self.board.figures:
             if figure.id not in figure_ids:
@@ -235,6 +258,9 @@ class Game():
                 field.update_figure(figure)
             self.board.set_all_moveable_fields()
             self.board.check_blocks_check()
+
+        if self.board.king.in_check():
+            self.n.send(str({"player-check": self.username}))
 
         if self.sound and has_pos_updates:
             if not self.board.get_check():
@@ -297,6 +323,9 @@ class Game():
                                                         break
                                                 else:
                                                     self.n.send(str({"remove-figure": field.figure.id}))
+
+                                                self.n.send(str({"player-check": None}))
+
                                         else:
                                             break
 
@@ -321,9 +350,24 @@ class Game():
                                         field.is_highlighted = True
 
         else:
-            self.n.send(str({"has_won": self.second_player_name if self.player.id == self.first_player else self.first_player_name}))
+            self.n.send(str({"has_won": self.second_player_name if self.player.id == self.first_player else self.first_player_name, "reason": "Checkmate"}))
 
         self.board.draw()
+
+        screen.blit(turn_text, (850, 100))
+        surrender_btn.draw(border=3)
+
+        if self.confirm_surrender:
+            screen.blit(confirm_txt, (850, 200))
+            yes_btn.draw(border=3)
+            no_btn.draw(border=3)
+
+        check = self.n.send("get-check")
+        if check != "None":
+            check_text = small_font.render(
+                f"Check: {check}",
+                None, (255, 0, 0))
+            screen.blit(check_text, (850, 300))
 
 class Field():
     def __init__(self, id, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
@@ -508,7 +552,6 @@ class Board():
                                 moveable_fields.append(figure.coordinates)
 
                             move_figure.moveable_fields = moveable_fields
-
 
     def get_field_by_id(self, id):
         for field in self.fields:

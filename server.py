@@ -38,7 +38,9 @@ class Game():
         self.pos_updates = []
         self.figure_ids = []
         self.check_fields = []
+        self.check = None
         self.has_won = None
+        self.win_reason = None
 
 def threaded_client(conn, id):
     global turn, pos_updates, connections, figure_ids, has_won, check_fields, clients, gameIdCount, games
@@ -49,6 +51,7 @@ def threaded_client(conn, id):
         try:
             game = clients[session_id]["game"]
             data = conn.recv(2048).decode()
+
 
             #Set
             if "set-name" in data:
@@ -117,8 +120,11 @@ def threaded_client(conn, id):
             elif "has_won" in data:
                 data = ast.literal_eval(data)
                 game.has_won = data["has_won"]
+                game.win_reason = data["reason"]
 
-                print(game.has_won)
+            elif "player-check" in data:
+                data = ast.literal_eval(data)
+                game.check = data["player-check"]
 
             elif "check-fields" in data:
                 data = ast.literal_eval(data)
@@ -163,11 +169,15 @@ def threaded_client(conn, id):
                 continue
 
             elif data == "get-won":
-                conn.send(str.encode(str(game.has_won)))
+                conn.send(str.encode(str({"has_won": game.has_won, "win_reason": game.win_reason})))
                 continue
 
             elif data == "get-fields-check":
                 conn.send(str.encode(str(game.check_fields)))
+                continue
+
+            elif data == "get-check":
+                conn.send(str.encode(str(game.check)))
                 continue
 
             conn.send(str.encode("200"))
