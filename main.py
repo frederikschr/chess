@@ -228,7 +228,6 @@ class Game():
                 self.confirm_surrender = False
         pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
         figure_ids = ast.literal_eval(self.n.send("get-figures"))
-
         has_won = ast.literal_eval(self.n.send("get-won"))
         removed = False
         has_pos_updates = False

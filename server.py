@@ -200,14 +200,9 @@ def threaded_client(conn, id):
                 remaining_player = game.second_player
             else:
                 remaining_player = game.first_player
-
             for client in clients.values():
-
-                print(client)
-
                 if client["player_id"] == remaining_player:
                     client["remaining"] = True
-
 
     del clients[session_id]
     print("Lost connection")
