@@ -367,7 +367,7 @@ class Game():
             check_text = small_font.render(
                 f"Check: {check}",
                 None, (255, 0, 0))
-            screen.blit(check_text, (850, 300))
+            screen.blit(check_text, (850, 350))
 
 class Field():
     def __init__(self, id, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
