@@ -49,9 +49,9 @@ def threaded_client(conn, id):
     player_id = clients[session_id]["player_id"]
     while True:
         try:
+
             game = clients[session_id]["game"]
             data = conn.recv(2048).decode()
-
 
             #Set
             if "set-name" in data:
@@ -136,6 +136,11 @@ def threaded_client(conn, id):
                 conn.send(str.encode(str(games_dict)))
                 continue
 
+            elif data == "get-remaining":
+                conn.send(str.encode(str(clients[session_id]["remaining"])))
+                clients[session_id]["remaining"] = False
+                continue
+
             elif data == "get-game-start":
                 can_start = False
                 if game:
@@ -189,6 +194,21 @@ def threaded_client(conn, id):
             print(e)
             break
 
+    if clients[session_id]["game"]:
+        if game.can_start:
+            if player_id == game.first_player:
+                remaining_player = game.second_player
+            else:
+                remaining_player = game.first_player
+
+            for client in clients.values():
+
+                print(client)
+
+                if client["player_id"] == remaining_player:
+                    client["remaining"] = True
+
+
     del clients[session_id]
     print("Lost connection")
     conn.close()
@@ -200,6 +220,6 @@ while True:
 
     idCount += 1
     connections += 1
-    clients[conn.getpeername()[1]] = {"player_id": idCount, "game": None, "player_name": None}
+    clients[conn.getpeername()[1]] = {"player_id": idCount, "game": None, "player_name": None, "remaining": False}
 
     start_new_thread(threaded_client, (conn, idCount))

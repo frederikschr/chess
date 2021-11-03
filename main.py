@@ -211,7 +211,9 @@ class Game():
     def game(self):
         turn = int(self.n.send("get-turn"))
         player_turn = self.first_player_name if turn == self.first_player else self.second_player_name
-        turn_text = small_font.render(f"Turn: {player_turn}", None, (255, 255, 255))
+        remaining = ast.literal_eval(self.n.send("get-remaining"))
+        if remaining:
+            self.n.send(str({"has_won": self.username, "reason": "connection loss"}))
         surrender_btn = Button((255, 255, 255), 850, 150, 70, 30, text="Exit")
         if surrender_btn.isClicked(pygame.mouse.get_pos()):
             self.confirm_surrender = True
@@ -226,6 +228,7 @@ class Game():
                 self.confirm_surrender = False
         pos_updates = ast.literal_eval(self.n.send("get-pos-update"))
         figure_ids = ast.literal_eval(self.n.send("get-figures"))
+
         has_won = ast.literal_eval(self.n.send("get-won"))
         removed = False
         has_pos_updates = False
@@ -323,7 +326,6 @@ class Game():
                                                         break
                                                 else:
                                                     self.n.send(str({"remove-figure": field.figure.id}))
-
                                                 self.n.send(str({"player-check": None}))
 
                                         else:
@@ -354,8 +356,9 @@ class Game():
 
         self.board.draw()
 
-        screen.blit(turn_text, (850, 100))
-        surrender_btn.draw(border=3)
+        turn_text = small_font.render(f"Turn: {player_turn}", None, (255, 255, 255))
+
+        chess_text = small_font.render("CHESS", None, (255, 255, 255))
 
         if self.confirm_surrender:
             screen.blit(confirm_txt, (850, 200))
@@ -368,6 +371,10 @@ class Game():
                 f"Check: {check}",
                 None, (255, 0, 0))
             screen.blit(check_text, (850, 350))
+
+        screen.blit(turn_text, (850, 100))
+        screen.blit(chess_text, (875, 50))
+        surrender_btn.draw(border=3)
 
 class Field():
     def __init__(self, id, game_coord_y, game_coord_x, win_pos_y, win_pos_x, size, figure):
