@@ -537,7 +537,8 @@ class Board():
             for figure in self.figures:
                 if figure.player == self.player.id:
                     if figure not in self.check_involved:
-                        figure.moveable_fields.clear()
+                        if not isinstance(figure, King):
+                            figure.moveable_fields.clear()
 
     def check_blocks_check(self):
         for move_figure in self.player.figures:
