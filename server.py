@@ -49,7 +49,6 @@ def threaded_client(conn, id):
     player_id = clients[session_id]["player_id"]
     while True:
         try:
-
             game = clients[session_id]["game"]
             data = conn.recv(2048).decode()
 
@@ -203,6 +202,8 @@ def threaded_client(conn, id):
             for client in clients.values():
                 if client["player_id"] == remaining_player:
                     client["remaining"] = True
+        if game in games:
+            games.remove(game)
 
     del clients[session_id]
     print("Lost connection")

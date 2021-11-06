@@ -48,9 +48,6 @@ class Game():
             elif self.stage == 6:
                 self.endscreen()
 
-            else:
-                pass
-
             self.events = pygame.event.get()
             self.handle_quit()
             clock.tick(self.FPS)
@@ -120,12 +117,17 @@ class Game():
         small_font = pygame.font.SysFont("Comic Sans MS", 25)
         screen.fill((133, 94, 66))
         create_game_btn = Button((255, 255, 255), width / 2 + 250, height / 3, 100, 60, text="Create")
+        exit_btn = Button((255, 255, 255), width / 2 - 350, height / 3, 100, 60, text="Exit")
 
         connections = int(self.n.send("get-connections"))
         games = ast.literal_eval(self.n.send("get-games"))
 
         if create_game_btn.isClicked(pygame.mouse.get_pos()):
             self.n.send("create-game")
+
+        elif exit_btn.isClicked(pygame.mouse.get_pos()):
+            pygame.quit()
+            sys.exit()
 
         y_count = height / 2
 
@@ -148,6 +150,7 @@ class Game():
             self.stage = 3
 
         create_game_btn.draw(border=3)
+        exit_btn.draw(border=3)
         games_text = font.render("Games", None, (255, 255, 255))
         conn_text = font.render(str(connections), None, (255, 255, 255))
         screen.blit(games_text, (width / 2 - games_text.get_width() / 2, height / 3))
@@ -356,9 +359,7 @@ class Game():
         self.board.draw()
 
         turn_text = small_font.render(f"Turn: {player_turn}", None, (255, 255, 255))
-
         chess_text = small_font.render("CHESS", None, (255, 255, 255))
-
         if self.confirm_surrender:
             screen.blit(confirm_txt, (850, 200))
             yes_btn.draw(border=3)
@@ -439,7 +440,6 @@ class Board():
                 owner = self.player.id if y < 3 else self.first_player
 
             for x in range(8):
-
                 if y == 1 or y == 6:
                     figure = Pawn(y + 1, x + 1, win_pos_y, win_pos_x, figure_id_count, owner, self)
 
