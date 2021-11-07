@@ -24,6 +24,7 @@ class Game():
         self.name_text = "Enter Name"
         self.events = None
         self.sound = True
+        self.name_taken = False
         self.confirm_surrender = False
 
     def run(self):
@@ -86,6 +87,7 @@ class Game():
                             self.name_text += event.unicode
 
         if name_button.isClicked(pygame.mouse.get_pos()):
+            self.name_taken = False
             if not self.selected:
                 self.selected = True
                 self.name_text = ""
@@ -96,14 +98,21 @@ class Game():
         if connect_btn.isClicked(pygame.mouse.get_pos()):
             if self.name_text != "":
                 if self.connect():
-                    self.n.send(str({"set-name": self.name_text}))
-                    self.username = self.name_text
-                    self.is_connected = True
-                    self.stage = 2
+                    if ast.literal_eval(self.n.send(str({"check-name": self.name_text}))):
+                        self.n.send(str({"set-name": self.name_text}))
+                        self.username = self.name_text
+                        self.is_connected = True
+                        self.stage = 2
+
+                    else:
+                        self.name_taken = True
 
         if settings_button.isClicked(pygame.mouse.get_pos()):
             self.stage = 5
 
+        if self.name_taken:
+            name_text = small_font.render("Name not available", None, (255, 255, 255))
+            screen.blit(name_text, (width / 2 - name_text.get_width() / 2, height / 2 + 75))
         connect_btn.draw(border=3)
         settings_button.draw(border=3)
         pygame.draw.line(screen, (255, 255, 255), (width / 2 - 100, height / 2 + 50), (width / 2 + 100, height / 2 + 50), 3)
@@ -146,7 +155,7 @@ class Game():
             if join_btn.isClicked(pygame.mouse.get_pos()):
                 self.n.send(str({"join-game": join_btn.data, "username": self.username}))
 
-        if ast.literal_eval(self.n.send("get-game-start")) == True:
+        if ast.literal_eval(self.n.send("get-game-start")):
             self.stage = 3
 
         create_game_btn.draw(border=3)
@@ -328,6 +337,7 @@ class Game():
                                                         break
                                                 else:
                                                     self.n.send(str({"remove-figure": field.figure.id}))
+
                                                 self.n.send(str({"player-check": None}))
 
                                         else:

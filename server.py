@@ -135,6 +135,16 @@ def threaded_client(conn, id):
                 conn.send(str.encode(str(games_dict)))
                 continue
 
+            elif "check-name" in data:
+                data = ast.literal_eval(data)
+                available = True
+                for client in clients.values():
+                    if client["player_name"] == data["check-name"]:
+                        available = False
+
+                conn.send(str.encode(str(available)))
+                continue
+
             elif data == "get-remaining":
                 conn.send(str.encode(str(clients[session_id]["remaining"])))
                 clients[session_id]["remaining"] = False
