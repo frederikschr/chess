@@ -3,7 +3,7 @@ from _thread import *
 import ast
 
 server = "172.31.13.60"
-port = 22
+port = 6666
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
