@@ -698,6 +698,8 @@ class King(Figure):
         self.attacker = None
         self.first_move = True
 
+        self.hidden_check = []
+
         self.move_between = False
 
         self.image_w = pygame.image.load("./assets/king_w.png")
@@ -705,7 +707,6 @@ class King(Figure):
 
     def set_moveable_fields(self):
         fields = []
-
         field_objs = self.board.get_fields_by_coords([[self.coordinates[0] + 1, self.coordinates[1]],
                                                       [self.coordinates[0] + 1, self.coordinates[1] + 1],
                                                       [self.coordinates[0], self.coordinates[1] + 1],
@@ -714,6 +715,7 @@ class King(Figure):
                                                       [self.coordinates[0] - 1, self.coordinates[1] - 1],
                                                       [self.coordinates[0], self.coordinates[1] - 1],
                                                       [self.coordinates[0] + 1, self.coordinates[1] - 1]])
+
 
         for field in field_objs:
             append = True
@@ -733,6 +735,10 @@ class King(Figure):
             if field.has_figure():
                 if field.figure.player == self.player:
                     append = False
+
+            if field.coordinates in self.hidden_check:
+                append = False
+
             if append:
                 fields.append(field.coordinates)
 
@@ -842,20 +848,30 @@ class Rook(Figure):
 
             line_fields = []
             figures_to_king = []
+            hidden_check = []
+            king = None
             append = True
-            for x in range(9):
-                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+            check = False
+            for x in range(8):
+                field = self.board.get_field_by_coords(
+                    [self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             if append:
                                 fields.append(field.coordinates)
+                            if check:
+                                king.hidden_check = hidden_check
+                                break
+
                             if isinstance(field.figure, King):
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                                 self.figures_to_king = figures_to_king
-                                break
+                                check = True
+                                field.figure.hidden_check.clear()
+                                king = field.figure
                             else:
                                 line_fields.append(field.coordinates)
                                 figures_to_king.append(field.figure)
@@ -868,7 +884,8 @@ class Rook(Figure):
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
-                            self.line_fields = line_fields
+                        if check:
+                            hidden_check.append(field.coordinates)
 
                     if y_counter != 0:
                         if y_counter > 0:
@@ -956,20 +973,29 @@ class Queen(Figure):
 
             line_fields = []
             figures_to_king = []
+            hidden_check = []
+            king = None
             append = True
-            for i in range(8):
+            check = False
+            for x in range(8):
                 field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             if append:
                                 fields.append(field.coordinates)
+                            if check:
+                                king.hidden_check = hidden_check
+                                break
+
                             if isinstance(field.figure, King):
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                                 self.figures_to_king = figures_to_king
-                                break
+                                check = True
+                                field.figure.hidden_check.clear()
+                                king = field.figure
                             else:
                                 line_fields.append(field.coordinates)
                                 figures_to_king.append(field.figure)
@@ -982,6 +1008,8 @@ class Queen(Figure):
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
+                        if check:
+                           hidden_check.append(field.coordinates)
 
                     if y_counter != 0:
                         if y_counter > 0:
@@ -1029,20 +1057,30 @@ class Bishop(Figure):
 
             line_fields = []
             figures_to_king = []
+            hidden_check = []
+            king = None
             append = True
+            check = False
             for x in range(8):
-                field = self.board.get_field_by_coords([self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
+                field = self.board.get_field_by_coords(
+                    [self.coordinates[0] + y_counter, self.coordinates[1] + x_counter])
                 if field:
                     if field.has_figure():
                         if field.figure.player != self.player:
                             if append:
                                 fields.append(field.coordinates)
+                            if check:
+                                king.hidden_check = hidden_check
+                                break
+
                             if isinstance(field.figure, King):
                                 if int(self.board.n.send("get-turn")) != self.player:
                                     self.board.game.n.send(str({"check-fields": line_fields}))
                                 self.line_fields = line_fields
                                 self.figures_to_king = figures_to_king
-                                break
+                                check = True
+                                field.figure.hidden_check.clear()
+                                king = field.figure
                             else:
                                 line_fields.append(field.coordinates)
                                 figures_to_king.append(field.figure)
@@ -1055,6 +1093,8 @@ class Bishop(Figure):
                             fields.append(field.coordinates)
                         else:
                             beatable_fields.append(field.coordinates)
+                        if check:
+                            hidden_check.append(field.coordinates)
 
                     if y_counter > 0:
                         y_counter += 1
