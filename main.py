@@ -531,10 +531,10 @@ class Board():
     def set_all_moveable_fields(self):
         for figure in self.figures:
             figure.blocks_check = False
+            figure.edge_figures.clear()
             if not isinstance(figure, King):
                 figure.set_moveable_fields()
         self.king.set_moveable_fields()
-
         if self.king.in_check():
             check_fields = ast.literal_eval(self.n.send("get-fields-check"))
             self.check_involved.clear()
@@ -635,6 +635,7 @@ class Figure():
         self.beatable_fields = []
 
         self.figures_to_king = []
+        self.edge_figures = []
 
         self.blocks_check = False
 
@@ -757,9 +758,22 @@ class King(Figure):
         if self.attacker:
             for figure in self.board.player.figures:
                 if self.attacker.coordinates in figure.moveable_fields:
-                    figures.append(figure)
-                    figure.moveable_fields = [self.attacker.coordinates]
-                    self.board.check_involved.append(figure)
+                    if not isinstance(figure, King):
+                        figures.append(figure)
+                        figure.moveable_fields = [self.attacker.coordinates]
+                        self.board.check_involved.append(figure)
+                    else:
+                        append = True
+                        for f in self.board.figures:
+                            if not f.player == self.player:
+                                if self.attacker in f.edge_figures:
+                                    append = False
+                        if append:
+                            figures.append(figure)
+                            figure.moveable_fields = [self.attacker.coordinates]
+                            self.board.check_involved.append(figure)
+                        else:
+                            figure.moveable_fields.remove(self.attacker.coordinates)
 
         return figures
 
@@ -776,12 +790,10 @@ class King(Figure):
         return False
 
     def is_checkmate(self):
-        if self.in_check():
-            if not self.get_attacker_beaters():
-                if not self.move_between:
-                    if self.moveable_fields == []:
-                        return True
-        return False
+        for figure in self.board.player.figures:
+            if figure.moveable_fields != []:
+                return False
+        return True
 
     def check_rochade(self):
         rooks = []
@@ -877,6 +889,7 @@ class Rook(Figure):
                                 figures_to_king.append(field.figure)
                             append = False
                         else:
+                            self.edge_figures.append(field.figure)
                             break
                     else:
                         line_fields.append(field.coordinates)
@@ -1001,6 +1014,7 @@ class Queen(Figure):
                                 figures_to_king.append(field.figure)
                             append = False
                         else:
+                            self.edge_figures.append(field.figure)
                             break
                     else:
                         line_fields.append(field.coordinates)
@@ -1086,6 +1100,7 @@ class Bishop(Figure):
                                 figures_to_king.append(field.figure)
                             append = False
                         else:
+                            self.edge_figures.append(field.figure)
                             break
                     else:
                         line_fields.append(field.coordinates)
